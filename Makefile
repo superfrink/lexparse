@@ -102,7 +102,7 @@ yaml-format: node_modules/.installed ## Format YAML files.
 #####################################################################
 
 .PHONY: lint
-lint: yamllint actionlint markdownlint ## Run all linters.
+lint: golangci-lint yamllint actionlint markdownlint ## Run all linters.
 
 .PHONY: actionlint
 actionlint: ## Runs the actionlint linter.
@@ -138,6 +138,15 @@ markdownlint: node_modules/.installed ## Runs the markdownlint linter.
 		else \
 			./node_modules/.bin/markdownlint --dot .; \
 		fi
+
+.PHONY: golangci-lint
+golangci-lint: ## Runs the golangci-lint linter.
+	@set -e;\
+		extraargs=""; \
+		if [ "$(OUTPUT_FORMAT)" == "github" ]; then \
+			extraargs="--out-format github-actions"; \
+		fi; \
+		golangci-lint run -c .golangci.yml ./... $$extraargs
 
 .PHONY: yamllint
 yamllint: ## Runs the yamllint linter.
