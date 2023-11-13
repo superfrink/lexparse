@@ -136,6 +136,7 @@ func (l *Lexer) Column() int {
 func (l *Lexer) ReadRune() (rune, int, error) {
 	rn, n, err := l.r.ReadRune()
 	if err != nil {
+		//nolint:wrapcheck // Error doesn't need to be wrapped.
 		return 0, 0, err
 	}
 
@@ -146,7 +147,7 @@ func (l *Lexer) ReadRune() (rune, int, error) {
 		l.column = 0
 	}
 
-	return rn, n, err
+	return rn, n, nil
 }
 
 // Peek returns the next n runes from the buffer without advancing the
@@ -154,6 +155,7 @@ func (l *Lexer) ReadRune() (rune, int, error) {
 // call. If Peek returns fewer than n runes, it also returns an error
 // indicating why the read is short.
 func (l *Lexer) Peek(n int) ([]rune, error) {
+	//nolint:wrapcheck // Error doesn't need to be wrapped.
 	return l.r.Peek(n)
 }
 
@@ -168,9 +170,10 @@ func (l *Lexer) Discard(n int) (int, error) {
 		// TODO(github.com/ianlewis/runeio/issues/51): Optimize using Buffered method.
 		toRead := 1
 
+		// Peek at input so we can increment position, line, column counters.
 		rn, err := l.r.Peek(toRead)
 		if err != nil {
-			return discarded, err
+			return discarded, fmt.Errorf("peeking input: %w", err)
 		}
 
 		d, err := l.r.Discard(toRead)
@@ -184,7 +187,7 @@ func (l *Lexer) Discard(n int) (int, error) {
 			}
 		}
 		if err != nil {
-			return discarded, err
+			return discarded, fmt.Errorf("discarding input: %w", err)
 		}
 		n -= toRead
 	}

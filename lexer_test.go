@@ -15,6 +15,7 @@
 package lexparse
 
 import (
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -34,7 +35,7 @@ func (w *wordState) Run(l *Lexer) (State, error) {
 	for {
 		rn, _, err := l.ReadRune()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				if len(word) > 0 {
 					l.Emit(wordType, string(word))
 				}
@@ -54,6 +55,8 @@ func (w *wordState) Run(l *Lexer) (State, error) {
 }
 
 func TestLexer(t *testing.T) {
+	t.Parallel()
+
 	input := "Hello World!"
 	l := NewLexer(strings.NewReader(input), &wordState{})
 	go func() {
