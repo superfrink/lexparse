@@ -17,8 +17,6 @@ package lexparse
 import (
 	"fmt"
 	"io"
-
-	"github.com/ianlewis/runeio"
 )
 
 // BufferedRuneReader implements functionality that allows for allow for zero-copy
@@ -29,8 +27,7 @@ type BufferedRuneReader interface {
 	// Buffered returns the number of runes currently buffered.
 	//
 	// This value becomes invalid following the next Read/Discard operation.
-	// TODO(github.com/ianlewis/runeio/issues/51): Add Buffered method when it's implemented by runeio.
-	// Buffered() int
+	Buffered() int
 
 	// Peek returns the next n runes from the buffer without advancing the
 	// reader. The runes stop being valid at the next read call. If Peek
@@ -104,14 +101,9 @@ type Lexer struct {
 }
 
 // NewLexer creates a new Lexer initialized with the given starting state.
-func NewLexer(r io.RuneReader, startingState State) *Lexer {
-	br, ok := r.(BufferedRuneReader)
-	if !ok {
-		br = runeio.NewReader(r)
-	}
-
+func NewLexer(r BufferedRuneReader, startingState State) *Lexer {
 	return &Lexer{
-		r:       br,
+		r:       r,
 		state:   startingState,
 		lexemes: make(chan *Lexeme),
 	}

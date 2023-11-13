@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/ianlewis/runeio"
 )
 
 const (
@@ -57,8 +59,7 @@ func (w *wordState) Run(l *Lexer) (State, error) {
 func TestLexer(t *testing.T) {
 	t.Parallel()
 
-	input := "Hello World!"
-	l := NewLexer(strings.NewReader(input), &wordState{})
+	l := NewLexer(runeio.NewReader(strings.NewReader("Hello World!")), &wordState{})
 	go func() {
 		if err := l.Lex(); err != nil {
 			t.Errorf("unexpected error: %v", err)
