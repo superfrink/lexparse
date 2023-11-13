@@ -51,6 +51,22 @@ type State interface {
 	Run(*Lexer) (State, error)
 }
 
+type fnState struct {
+	f func(*Lexer) (State, error)
+}
+
+func (s *fnState) Run(l *Lexer) (State, error) {
+	if s.f == nil {
+		return nil, nil
+	}
+	return s.f(l)
+}
+
+// StateFn creates a State from the given Run function.
+func StateFn(f func(*Lexer) (State, error)) State {
+	return &fnState{f}
+}
+
 // Lexeme is a tokenized input which can be emitted by a Lexer.
 type Lexeme struct {
 	// Type is the Lexeme's type.
