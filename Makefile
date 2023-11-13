@@ -16,6 +16,8 @@ SHELL := /bin/bash
 OUTPUT_FORMAT ?= $(shell if [ "${GITHUB_ACTIONS}" == "true" ]; then echo "github"; else echo ""; fi)
 REPO_NAME = $(shell basename "$$(pwd)")
 
+TESTCOUNT ?= 1
+
 .PHONY: help
 help: ## Shows all targets and help from the Makefile (this message).
 	@echo "$(REPO_NAME) Makefile"
