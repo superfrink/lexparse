@@ -33,7 +33,7 @@ test = { changelog_title = "", omit_from_changelog = true }
 path = "CHANGELOG.md"
 template = "remote"
 remote = "github.com"
-repository = "runeio"
+repository = "lexparse"
 owner = "ianlewis"
 authors = [
   { username = "ianlewis", signature = "Ian Lewis"}
