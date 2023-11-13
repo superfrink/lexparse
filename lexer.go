@@ -166,9 +166,14 @@ func (l *Lexer) Peek(n int) ([]rune, error) {
 func (l *Lexer) Discard(n int) (int, error) {
 	var discarded int
 	defer l.Ignore()
+	// TODO(github.com/ianlewis/runeio/issues/51): Optimize using Buffered method.
+	// Minimum size the buffer of underlying reader could be expected to be.
+	minSize := 16
 	for n > 0 {
-		// TODO(github.com/ianlewis/runeio/issues/51): Optimize using Buffered method.
-		toRead := 1
+		toRead := minSize
+		if n < minSize {
+			toRead = n
+		}
 
 		// Peek at input so we can increment position, line, column counters.
 		rn, err := l.r.Peek(toRead)
@@ -178,9 +183,12 @@ func (l *Lexer) Discard(n int) (int, error) {
 
 		d, err := l.r.Discard(toRead)
 		discarded += d
-		l.pos += discarded
-		l.column += discarded
-		for i := range rn {
+		l.pos += d
+		l.column += d
+
+		// NOTE: We must be careful since # discarded could be different from #
+		//       of runes peeked.
+		for i := 0; i < d; i++ {
 			if rn[i] == '\n' {
 				l.line++
 				l.column = 0
@@ -189,7 +197,7 @@ func (l *Lexer) Discard(n int) (int, error) {
 		if err != nil {
 			return discarded, fmt.Errorf("discarding input: %w", err)
 		}
-		n -= toRead
+		n -= d
 	}
 
 	return discarded, nil
