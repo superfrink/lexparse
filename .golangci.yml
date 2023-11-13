@@ -93,6 +93,9 @@ linters-settings:
           - $gostd
 
           # This project.
+          - "github.com/ianlewis/lexparse"
+
+          # Dependencies.
           - "github.com/ianlewis/runeio"
         deny:
           - pkg: "reflect"
@@ -107,7 +110,11 @@ linters-settings:
           - $gostd
 
           # This project.
+          - "github.com/ianlewis/lexparse"
+
+          # Dependencies.
           - "github.com/ianlewis/runeio"
+          - "github.com/google/go-cmp/cmp"
         deny:
           - pkg: "reflect"
             desc: Use go-cmp instead.
