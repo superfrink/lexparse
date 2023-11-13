@@ -1,3 +1,3 @@
-# repo-template
+# lexparse
 
-Repository template for repos under github.com/ianlewis
+Experimental lexer/parser library written in Go. Currently under active development.
