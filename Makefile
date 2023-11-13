@@ -39,6 +39,19 @@ node_modules/.installed: package.json package-lock.json
 	npm ci
 	touch node_modules/.installed
 
+## Testing
+#####################################################################
+
+.PHONY: unit-test
+unit-test: ## Runs unit tests.
+	@set -e;\
+		go mod vendor; \
+		extraargs=""; \
+		if [ "$(OUTPUT_FORMAT)" == "github" ]; then \
+			extraargs="-v"; \
+		fi; \
+		go test $$extraargs -mod=vendor -count=$(TESTCOUNT) -race -coverprofile=coverage.out -covermode=atomic ./...
+
 ## Tools
 #####################################################################
 
@@ -66,7 +79,12 @@ autogen: ## Runs autogen on code files.
 		fi;
 
 .PHONY: format
-format: md-format yaml-format ## Format all files
+format: go-format md-format yaml-format ## Format all files
+
+.PHONY: go-format
+go-format: ## Format Go files.
+	gofumpt -w .
+	gci write .
 
 .PHONY: md-format
 md-format: node_modules/.installed ## Format Markdown files.
