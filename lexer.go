@@ -15,6 +15,7 @@
 package lexparse
 
 import (
+	"errors"
 	"fmt"
 	"io"
 )
@@ -130,12 +131,12 @@ func (l *Lexer) Pos() int {
 	return l.pos
 }
 
-// Line returns the current line in the input.
+// Line returns the current line in the input (zero indexed).
 func (l *Lexer) Line() int {
 	return l.line
 }
 
-// Column returns the current column in the input.
+// Column returns the current column in the input (zero indexed).
 func (l *Lexer) Column() int {
 	return l.column
 }
@@ -167,48 +168,125 @@ func (l *Lexer) Peek(n int) ([]rune, error) {
 	return l.r.Peek(n)
 }
 
-// Discard attempts to discard n runes and returns the number actually
-// discarded. If the number of runes discarded is different than n, then an
-// error is returned explaining the reason. It also resets the current lexeme
-// position.
-func (l *Lexer) Discard(n int) (int, error) {
-	var discarded int
-	defer l.Ignore()
-	// TODO(github.com/ianlewis/runeio/issues/51): Optimize using Buffered method.
+// Advance attempts to advance the underlying reader n runes and returns the
+// number actually advanced. If the number of runes advanced is different than
+// n, then an error is returned explaining the reason. It also updates the
+// current lexeme position.
+func (l *Lexer) Advance(n int) (int, error) {
+	var advanced int
 	// Minimum size the buffer of underlying reader could be expected to be.
 	minSize := 16
 	for n > 0 {
-		toRead := minSize
-		if n < minSize {
+		// Determine the number of runes to read.
+		toRead := l.r.Buffered()
+		if n < toRead {
 			toRead = n
+		}
+		if toRead == 0 {
+			if minSize < n {
+				toRead = minSize
+			} else {
+				toRead = n
+			}
 		}
 
 		// Peek at input so we can increment position, line, column counters.
 		rn, err := l.r.Peek(toRead)
-		if err != nil {
-			return discarded, fmt.Errorf("peeking input: %w", err)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return advanced, fmt.Errorf("peeking input: %w", err)
 		}
 
-		d, err := l.r.Discard(toRead)
-		discarded += d
+		// Advance by peeked amount.
+		d, dErr := l.r.Discard(len(rn))
+		advanced += d
 		l.pos += d
-		l.column += d
 
-		// NOTE: We must be careful since # discarded could be different from #
+		// NOTE: We must be careful since toRead could be different from #
 		//       of runes peeked.
 		for i := 0; i < d; i++ {
 			if rn[i] == '\n' {
 				l.line++
 				l.column = 0
+			} else {
+				l.column++
 			}
 		}
-		if err != nil {
-			return discarded, fmt.Errorf("discarding input: %w", err)
+		if dErr != nil {
+			return advanced, fmt.Errorf("discarding input: %w", err)
 		}
+		if err != nil {
+			// EOF from Peek
+			return advanced, err
+		}
+
 		n -= d
 	}
 
-	return discarded, nil
+	return advanced, nil
+}
+
+// Discard attempts to discard n runes and returns the number actually
+// discarded. If the number of runes discarded is different than n, then an
+// error is returned explaining the reason. It also resets the current lexeme
+// position.
+func (l *Lexer) Discard(n int) (int, error) {
+	defer l.Ignore()
+	return l.Advance(n)
+}
+
+// Find searches the input for the substring, advancing the reader and updating
+// the lexeme position to the starting position of the substring.
+func (l *Lexer) Find(s string) error {
+	lenS := len(s)
+
+	for {
+		bufS := l.r.Buffered()
+		if bufS < lenS {
+			bufS = lenS
+		}
+
+		fmt.Println(bufS)
+
+		rns, err := l.r.Peek(bufS)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+
+		for i := 0; i < len(rns)-lenS+1; i++ {
+			if s == "no match" {
+				fmt.Println(string(rns[i : i+lenS]))
+			}
+			if string(rns[i:i+lenS]) == s {
+				// We have found a match. Discard prior runes and return.
+				_, err := l.Discard(i)
+				if err != nil {
+					return err
+				}
+
+				// NOTE: Don't return error since we still have some runes left
+				// to read.
+				return nil
+			}
+		}
+
+		// Advance the reader by the runes peeked.
+		// NOTE: Only advance the reader the number of runes that could never
+		// match the substring. Not the full number peeked.
+		// NOTE: We must advance by the number of runes peeked (rather than
+		// bufS) since we may not have been able to read the same number of
+		// runes as requested.
+		toDiscard := len(rns) - lenS + 1
+		if toDiscard <= 0 {
+			toDiscard = 1
+		}
+		_, err = l.Discard(toDiscard)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
 // Ignore ignores the previous input and resets the lexeme start position to
@@ -231,6 +309,9 @@ func (l *Lexer) Lex() error {
 		}
 		l.state, err = l.state.Run(l)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return fmt.Errorf("lexing input: %w", err)
 		}
 	}

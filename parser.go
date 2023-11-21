@@ -24,36 +24,87 @@ type Node[V any] struct {
 	Parent   *Node[V]
 	Children []*Node[V]
 	Value    V
+	// TODO: Position,Line,Column in original input.
 }
 
-type ParseFn [V]func(chan<- *Lexeme, *Tree[V]) (ParseFn[V], error)
+// FIXME: Remove channel
+type ParseFn[V any] func(*Parser[V]) (ParseFn[V], error)
 
-func Parse[V any](c chan<- *Lexeme, initFn ParseFn[V]) (*Tree[V], error) {
-	// TODO:(#459): Implement Parse
-	return nil
+func NewParser[V any](l *Lexer) *Parser[V] {
+	root := &Node[V]{}
+	p := &Parser[V]{
+		lexer: l,
+		tree: &Tree[V]{
+			Root: root,
+		},
+		node: root,
+	}
+	return p
 }
 
-// LexParse runs the Lexer passing lexemes to the parser functions.
-func LexParse[V any](l *Lexer, initFn ParseFn[V]) (*Tree[V], error) {
-	var lexErr error
-	go func() {
-		lexErr := l.Lex()
-	}()
+type Parser[V any] struct {
+	lexer *Lexer
 
-	parseFn := initFn
-	t := &Tree[V]{
-		Root: &Node[V]{},
+	tree *Tree[V]
+	// node is the current node under processing.
+	node *Node[V]
+
+	// lexeme is the currently read lexeme.
+	lexeme *Lexeme
+}
+
+func (p *Parser[V]) Tree() *Tree[V] {
+	return p.tree
+}
+
+// Peek returns the next Lexeme from the lexer without consuming it.
+func (p *Parser[V]) Peek() *Lexeme {
+	if p.lexeme != nil {
+		return p.lexeme
 	}
-	var err error
-	for {
-		parseFn, err = parseFn(l.lexemes, t)
-		if err != nil {
-			// TODO: if the parser encounters an error stop the lexer
-			return t, err
-		}
-		if parseFn == nil {
-			break
-		}
+	l, ok := <-p.lexer.lexemes
+	if !ok {
+		return nil
 	}
-	return t, err
+	p.lexeme = l
+	return p.lexeme
+}
+
+// Next returns the next Lexeme from the lexer.
+func (p *Parser[V]) Next() *Lexeme {
+	l := p.Peek()
+	p.lexeme = nil
+	return l
+}
+
+// Pos returns the current node position in the tree.
+func (p *Parser[V]) Pos() *Node[V] {
+	return p.node
+}
+
+// Push creates a new node, adds it as a child to the current node, and sets it
+// as the current node.
+func (p *Parser[V]) Push(v V) *Node[V] {
+	n := p.Node(v)
+	p.node = n
+	return n
+}
+
+// Node creates a new node and adds it as a child to the current node.
+func (p *Parser[V]) Node(v V) *Node[V] {
+	cur := p.Pos()
+	node := &Node[V]{
+		Parent: p.Pos(),
+		Value:  v,
+	}
+	cur.Children = append(cur.Children, node)
+	return node
+}
+
+// Pop updates the current node position to the current node's parent
+// returning the previous current node.
+func (p *Parser[V]) Pop() *Node[V] {
+	n := p.node
+	p.node = p.node.Parent
+	return n
 }

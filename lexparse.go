@@ -15,3 +15,31 @@
 // Package lexparse defines a set of interfaces that can be used to define
 // generic lexers and parsers over byte streams.
 package lexparse
+
+// LexParse runs the Lexer passing lexemes to the parser functions.
+func LexParse[V any](r BufferedRuneReader, initState *State, initFn ParseFn[V]) (*Tree[V], error) {
+	// FIXME: Implement
+	// lexer := NexLexer(r, initState)
+
+	// var lexErr error
+	// go func() {
+	// 	lexErr := l.Lex()
+	// }()
+
+	// // FIXME: Use Parser.
+	// p := NewParser[string](l)
+	// parseFn := initFn
+	// var err error
+	// for {
+	// 	parseFn, err = parseFn(p)
+	// 	if err != nil {
+	// 		// TODO: if the parser encounters an error stop the lexer
+	// 		return p.Tree(), err
+	// 	}
+	// 	if parseFn == nil {
+	// 		break
+	// 	}
+	// }
+	// return p.Tree(), err
+	return nil, nil
+}
