@@ -15,9 +15,11 @@
 package lexparse
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 )
 
 // BufferedRuneReader implements functionality that allows for allow for zero-copy
@@ -49,22 +51,25 @@ type LexemeType int
 // State is the state of the current lexing state machine. It defines the logic
 // to process the current state and returns the next state.
 type State interface {
-	Run(*Lexer) (State, error)
+	// Run returns the next state to transition to or an error. If the returned
+	// next state is nil or the returned error is io.EOF then the Lexer
+	// finishes processing normally.
+	Run(context.Context, *Lexer) (State, error)
 }
 
 type fnState struct {
-	f func(*Lexer) (State, error)
+	f func(context.Context, *Lexer) (State, error)
 }
 
-func (s *fnState) Run(l *Lexer) (State, error) {
+func (s *fnState) Run(ctx context.Context, l *Lexer) (State, error) {
 	if s.f == nil {
 		return nil, nil
 	}
-	return s.f(l)
+	return s.f(ctx, l)
 }
 
 // StateFn creates a State from the given Run function.
-func StateFn(f func(*Lexer) (State, error)) State {
+func StateFn(f func(context.Context, *Lexer) (State, error)) State {
 	return &fnState{f}
 }
 
@@ -89,71 +94,97 @@ type Lexeme struct {
 // Lexer lexically processes a byte stream. It is implemented as a finite-state
 // machine in which each State implements it's own processing.
 type Lexer struct {
-	// r is the underlying reader to read from.
-	r BufferedRuneReader
+	// lexemes is a channel into which Lexeme's will be emitted.
+	lexemes chan *Lexeme
+
+	// done is the stop channel
+	done chan struct{}
 
 	// state is the current state of the Lexer.
 	state State
 
-	// lexemes is a channel into which Lexeme's will be emitted.
-	lexemes chan *Lexeme
+	// s is the current input/pos/lexeme state.
+	s struct {
+		// Mutex protects the values in s.
+		sync.Mutex
 
-	// pos is the current position in the input stream.
-	pos int
+		// r is the underlying reader to read from.
+		r BufferedRuneReader
 
-	// line is the current line in the input.
-	line int
+		// pos is the current position in the input stream.
+		pos int
 
-	// column is the current column in the input.
-	column int
+		// line is the current line in the input.
+		line int
 
-	// startPos is the position of the current lexeme.
-	startPos int
+		// column is the current column in the input.
+		column int
 
-	// startLine is the line of the current lexeme.
-	startLine int
+		// startPos is the position of the current lexeme.
+		startPos int
 
-	// startColumn is the column of the current lexeme.
-	startColumn int
+		// startLine is the line of the current lexeme.
+		startLine int
+
+		// startColumn is the column of the current lexeme.
+		startColumn int
+
+		// err holds the last lexing error.
+		err error
+	}
 }
 
 // NewLexer creates a new Lexer initialized with the given starting state.
 func NewLexer(r BufferedRuneReader, startingState State) *Lexer {
-	return &Lexer{
-		r:       r,
+	l := &Lexer{
 		state:   startingState,
 		lexemes: make(chan *Lexeme),
+		done:    make(chan struct{}),
 	}
+	l.s.r = r
+	return l
 }
 
 // Pos returns the current position of the underlying reader.
 func (l *Lexer) Pos() int {
-	return l.pos
+	l.s.Lock()
+	pos := l.s.pos
+	l.s.Unlock()
+	return pos
 }
 
 // Line returns the current line in the input (zero indexed).
 func (l *Lexer) Line() int {
-	return l.line
+	l.s.Lock()
+	line := l.s.line
+	l.s.Unlock()
+	return line
 }
 
 // Column returns the current column in the input (zero indexed).
 func (l *Lexer) Column() int {
-	return l.column
+	l.s.Lock()
+	c := l.s.column
+	l.s.Unlock()
+	return c
 }
 
 // ReadRune returns the next rune of input.
 func (l *Lexer) ReadRune() (rune, int, error) {
-	rn, n, err := l.r.ReadRune()
+	l.s.Lock()
+	defer l.s.Unlock()
+
+	rn, n, err := l.s.r.ReadRune()
 	if err != nil {
 		//nolint:wrapcheck // Error doesn't need to be wrapped.
 		return 0, 0, err
 	}
 
-	l.pos++
-	l.column++
+	l.s.pos++
+	l.s.column++
 	if rn == '\n' {
-		l.line++
-		l.column = 0
+		l.s.line++
+		l.s.column = 0
 	}
 
 	return rn, n, nil
@@ -164,8 +195,11 @@ func (l *Lexer) ReadRune() (rune, int, error) {
 // call. If Peek returns fewer than n runes, it also returns an error
 // indicating why the read is short.
 func (l *Lexer) Peek(n int) ([]rune, error) {
+	l.s.Lock()
 	//nolint:wrapcheck // Error doesn't need to be wrapped.
-	return l.r.Peek(n)
+	p, err := l.s.r.Peek(n)
+	l.s.Unlock()
+	return p, err
 }
 
 // Advance attempts to advance the underlying reader n runes and returns the
@@ -173,12 +207,19 @@ func (l *Lexer) Peek(n int) ([]rune, error) {
 // n, then an error is returned explaining the reason. It also updates the
 // current lexeme position.
 func (l *Lexer) Advance(n int) (int, error) {
+	l.s.Lock()
+	a, err := l.advance(n)
+	l.s.Unlock()
+	return a, err
+}
+
+func (l *Lexer) advance(n int) (int, error) {
 	var advanced int
 	// Minimum size the buffer of underlying reader could be expected to be.
 	minSize := 16
 	for n > 0 {
 		// Determine the number of runes to read.
-		toRead := l.r.Buffered()
+		toRead := l.s.r.Buffered()
 		if n < toRead {
 			toRead = n
 		}
@@ -191,24 +232,24 @@ func (l *Lexer) Advance(n int) (int, error) {
 		}
 
 		// Peek at input so we can increment position, line, column counters.
-		rn, err := l.r.Peek(toRead)
+		rn, err := l.s.r.Peek(toRead)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return advanced, fmt.Errorf("peeking input: %w", err)
 		}
 
 		// Advance by peeked amount.
-		d, dErr := l.r.Discard(len(rn))
+		d, dErr := l.s.r.Discard(len(rn))
 		advanced += d
-		l.pos += d
+		l.s.pos += d
 
 		// NOTE: We must be careful since toRead could be different from #
 		//       of runes peeked.
 		for i := 0; i < d; i++ {
 			if rn[i] == '\n' {
-				l.line++
-				l.column = 0
+				l.s.line++
+				l.s.column = 0
 			} else {
-				l.column++
+				l.s.column++
 			}
 		}
 		if dErr != nil {
@@ -230,35 +271,41 @@ func (l *Lexer) Advance(n int) (int, error) {
 // error is returned explaining the reason. It also resets the current lexeme
 // position.
 func (l *Lexer) Discard(n int) (int, error) {
-	defer l.Ignore()
-	return l.Advance(n)
+	l.s.Lock()
+	d, err := l.discard(n)
+	l.s.Unlock()
+	return d, err
+}
+
+func (l *Lexer) discard(n int) (int, error) {
+	a, err := l.advance(n)
+	l.ignore()
+	return a, err
 }
 
 // Find searches the input for the substring, advancing the reader and updating
 // the lexeme position to the starting position of the substring.
 func (l *Lexer) Find(s string) error {
+	l.s.Lock()
+	defer l.s.Unlock()
+
 	lenS := len(s)
 
 	for {
-		bufS := l.r.Buffered()
+		bufS := l.s.r.Buffered()
 		if bufS < lenS {
 			bufS = lenS
 		}
 
-		fmt.Println(bufS)
-
-		rns, err := l.r.Peek(bufS)
+		rns, err := l.s.r.Peek(bufS)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return err
 		}
 
 		for i := 0; i < len(rns)-lenS+1; i++ {
-			if s == "no match" {
-				fmt.Println(string(rns[i : i+lenS]))
-			}
 			if string(rns[i:i+lenS]) == s {
 				// We have found a match. Discard prior runes and return.
-				_, err := l.Discard(i)
+				_, err := l.discard(i)
 				if err != nil {
 					return err
 				}
@@ -279,7 +326,7 @@ func (l *Lexer) Find(s string) error {
 		if toDiscard <= 0 {
 			toDiscard = 1
 		}
-		_, err = l.Discard(toDiscard)
+		_, err = l.discard(toDiscard)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				return nil
@@ -292,42 +339,87 @@ func (l *Lexer) Find(s string) error {
 // Ignore ignores the previous input and resets the lexeme start position to
 // the current reader position.
 func (l *Lexer) Ignore() {
-	l.startPos = l.pos
-	l.startLine = l.line
-	l.startColumn = l.column
+	l.s.Lock()
+	l.ignore()
+	l.s.Unlock()
 }
 
-// Lex runs the Lexer.
-func (l *Lexer) Lex() error {
-	// TODO(#459): Connect with the parser.
-	defer close(l.lexemes)
+func (l *Lexer) ignore() {
+	l.s.startPos = l.s.pos
+	l.s.startLine = l.s.line
+	l.s.startColumn = l.s.column
+}
 
-	var err error
-	for {
-		if l.state == nil {
-			return nil
-		}
-		l.state, err = l.state.Run(l)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return fmt.Errorf("lexing input: %w", err)
-		}
+// Lex starts a new goroutine to parse the content. The caller can request that
+// the lexer stop by cancelling ctx. The returned channel is closed when the
+// Lexer is finished running.
+func (l *Lexer) Lex(ctx context.Context) <-chan *Lexeme {
+	// Just return if the lexer is already done.
+	select {
+	case <-l.Done():
+		l.s.Unlock()
+		return l.lexemes
+	default:
 	}
+
+	go func() {
+		var err error
+		defer close(l.done)
+		defer close(l.lexemes)
+		for l.state != nil {
+			select {
+			case <-ctx.Done():
+				l.setErr(ctx.Err())
+				return
+			default:
+			}
+
+			l.state, err = l.state.Run(ctx, l)
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					l.setErr(err)
+				}
+				return
+			}
+		}
+	}()
+	return l.lexemes
+}
+
+// setErr sets the lexer's error value.
+func (l *Lexer) setErr(err error) {
+	l.s.Lock()
+	l.s.err = err
+	l.s.Unlock()
+}
+
+// Err returns the last encountered error.
+func (l *Lexer) Err() error {
+	l.s.Lock()
+	err := l.s.err
+	l.s.Unlock()
+	return err
+}
+
+// Done returns a channel that is closed when the lexer is finished running.
+func (l *Lexer) Done() <-chan struct{} {
+	return l.done
 }
 
 // Emit is used by State implementations to emit a lexeme at the current
 // position which will be passed on to the parser. If the lexer is not
 // currently active, this is a no-op.
 func (l *Lexer) Emit(typ LexemeType, val string) {
-	l.EmitLexeme(&Lexeme{
+	l.s.Lock()
+	lexeme := &Lexeme{
 		Type:   typ,
 		Value:  val,
-		Pos:    l.startPos,
-		Line:   l.startLine,
-		Column: l.startColumn,
-	})
+		Pos:    l.s.startPos,
+		Line:   l.s.startLine,
+		Column: l.s.startColumn,
+	}
+	l.s.Unlock()
+	l.EmitLexeme(lexeme)
 }
 
 // EmitLexeme is used by State implementations to emit a lexeme which will be passed

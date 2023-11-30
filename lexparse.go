@@ -17,16 +17,16 @@
 package lexparse
 
 // LexParse runs the Lexer passing lexemes to the parser functions.
-func LexParse[V any](r BufferedRuneReader, initState *State, initFn ParseFn[V]) (*Tree[V], error) {
-	// FIXME: Implement
-	// lexer := NexLexer(r, initState)
+func LexParse[V any](r BufferedRuneReader, initState State, initFn ParseFn[V]) (*Tree[V], error) {
+	// // FIXME: Implement
+	// l := NewLexer(r, initState)
 
 	// var lexErr error
 	// go func() {
 	// 	lexErr := l.Lex()
 	// }()
 
-	// // FIXME: Use Parser.
+	// // // FIXME: Use Parser.
 	// p := NewParser[string](l)
 	// parseFn := initFn
 	// var err error
@@ -40,6 +40,10 @@ func LexParse[V any](r BufferedRuneReader, initState *State, initFn ParseFn[V]) 
 	// 		break
 	// 	}
 	// }
+	// if lexErr != nil {
+
+	// }
+
 	// return p.Tree(), err
 	return nil, nil
 }
