@@ -34,26 +34,18 @@ const (
 type wordState struct{}
 
 func (w *wordState) Run(_ context.Context, l *Lexer) (State, error) {
-	var word []rune
 	for {
 		rn, _, err := l.ReadRune()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				if len(word) > 0 {
-					l.Emit(wordType, string(word))
-				}
-				return nil, nil
+		if rn == ' ' || errors.Is(err, io.EOF) {
+			word := l.Lexeme(wordType)
+			word.Value = strings.TrimRight(word.Value, " ")
+			if word.Value != "" {
+				l.Emit(word)
 			}
+		}
+		if err != nil {
 			return nil, err
 		}
-		if rn == ' ' {
-			if len(word) > 0 {
-				l.Emit(wordType, string(word))
-			}
-			return w, nil
-		}
-
-		word = append(word, rn)
 	}
 }
 
@@ -137,16 +129,20 @@ func TestLexer_Advance(t *testing.T) {
 			t.Errorf("Column: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startPos, 0; got != want {
-			t.Errorf("startPos: want: %v, got: %v", want, got)
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, "Hello\n!"; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 0; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startLine, 0; got != want {
-			t.Errorf("startLine: want: %v, got: %v", want, got)
+		if got, want := lexeme.Line, 0; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startColumn, 0; got != want {
-			t.Errorf("startColumn: want: %v, got: %v", want, got)
+		if got, want := lexeme.Column, 0; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
 		}
 	})
 
@@ -173,16 +169,20 @@ func TestLexer_Advance(t *testing.T) {
 			t.Errorf("Column: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startPos, 0; got != want {
-			t.Errorf("startPos: want: %v, got: %v", want, got)
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, "Hello\n!Advance!"; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 0; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startLine, 0; got != want {
-			t.Errorf("startLine: want: %v, got: %v", want, got)
+		if got, want := lexeme.Line, 0; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startColumn, 0; got != want {
-			t.Errorf("startColumn: want: %v, got: %v", want, got)
+		if got, want := lexeme.Column, 0; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
 		}
 	})
 }
@@ -221,16 +221,20 @@ func TestLexer_Discard(t *testing.T) {
 			t.Errorf("Column: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startPos, 7; got != want {
-			t.Errorf("startPos: want: %v, got: %v", want, got)
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, ""; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 7; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startLine, 1; got != want {
-			t.Errorf("startLine: want: %v, got: %v", want, got)
+		if got, want := lexeme.Line, 1; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startColumn, 1; got != want {
-			t.Errorf("startColumn: want: %v, got: %v", want, got)
+		if got, want := lexeme.Column, 1; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
 		}
 	})
 
@@ -257,16 +261,20 @@ func TestLexer_Discard(t *testing.T) {
 			t.Errorf("Column: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startPos, 15; got != want {
-			t.Errorf("startPos: want: %v, got: %v", want, got)
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, ""; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 15; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startLine, 1; got != want {
-			t.Errorf("startLine: want: %v, got: %v", want, got)
+		if got, want := lexeme.Line, 1; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startColumn, 9; got != want {
-			t.Errorf("startColumn: want: %v, got: %v", want, got)
+		if got, want := lexeme.Column, 9; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
 		}
 	})
 }
@@ -277,9 +285,12 @@ func TestLexer_Find(t *testing.T) {
 	t.Run("match", func(t *testing.T) {
 		l := NewLexer(runeio.NewReader(strings.NewReader("Hello\n!Find!")), &wordState{})
 
-		err := l.Find("Find")
+		token, err := l.Find([]string{"Find"})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
+		}
+		if got, want := token, "Find"; got != want {
+			t.Errorf("unexpected token: want: %q, got: %q", want, got)
 		}
 
 		rns, err := l.Peek(5)
@@ -302,25 +313,32 @@ func TestLexer_Find(t *testing.T) {
 			t.Errorf("Column: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startPos, 7; got != want {
-			t.Errorf("startPos: want: %v, got: %v", want, got)
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, "Hello\n!"; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 0; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startLine, 1; got != want {
-			t.Errorf("startLine: want: %v, got: %v", want, got)
+		if got, want := lexeme.Line, 0; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startColumn, 1; got != want {
-			t.Errorf("startColumn: want: %v, got: %v", want, got)
+		if got, want := lexeme.Column, 0; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
 		}
 	})
 
 	t.Run("no match", func(t *testing.T) {
 		l := NewLexer(runeio.NewReader(strings.NewReader("Hello\n!Find!")), &wordState{})
 
-		err := l.Find("no match")
+		token, err := l.Find([]string{"no match"})
 		if !errors.Is(err, io.EOF) {
 			t.Errorf("unexpected error: %v", err)
+		}
+		if got, want := token, ""; got != want {
+			t.Errorf("unexpected token: want: %q, got: %q", want, got)
 		}
 
 		if got, want := l.Pos(), 12; got != want {
@@ -335,16 +353,112 @@ func TestLexer_Find(t *testing.T) {
 			t.Errorf("Column: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startPos, 12; got != want {
-			t.Errorf("startPos: want: %v, got: %v", want, got)
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, "Hello\n!Find!"; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 0; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startLine, 1; got != want {
-			t.Errorf("startLine: want: %v, got: %v", want, got)
+		if got, want := lexeme.Line, 0; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.s.startColumn, 6; got != want {
-			t.Errorf("startColumn: want: %v, got: %v", want, got)
+		if got, want := lexeme.Column, 0; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
+		}
+	})
+}
+
+func TestLexer_SkipTo(t *testing.T) {
+	t.Parallel()
+
+	t.Run("match", func(t *testing.T) {
+		l := NewLexer(runeio.NewReader(strings.NewReader("Hello\n!Find!")), &wordState{})
+
+		token, err := l.SkipTo([]string{"Find"})
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if got, want := token, "Find"; got != want {
+			t.Errorf("unexpected token: want: %q, got: %q", want, got)
+		}
+
+		rns, err := l.Peek(5)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if got, want := string(rns), "Find!"; got != want {
+			t.Errorf("Peek: want: %q, got: %q", want, got)
+		}
+
+		if got, want := l.Pos(), 7; got != want {
+			t.Errorf("Pos: want: %v, got: %v", want, got)
+		}
+
+		if got, want := l.Line(), 1; got != want {
+			t.Errorf("Line: want: %v, got: %v", want, got)
+		}
+
+		if got, want := l.Column(), 1; got != want {
+			t.Errorf("Column: want: %v, got: %v", want, got)
+		}
+
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, ""; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 7; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
+		}
+
+		if got, want := lexeme.Line, 1; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
+		}
+
+		if got, want := lexeme.Column, 1; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
+		}
+	})
+
+	t.Run("no match", func(t *testing.T) {
+		l := NewLexer(runeio.NewReader(strings.NewReader("Hello\n!Find!")), &wordState{})
+
+		token, err := l.SkipTo([]string{"no match"})
+		if !errors.Is(err, io.EOF) {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if got, want := token, ""; got != want {
+			t.Errorf("unexpected token: want: %q, got: %q", want, got)
+		}
+
+		if got, want := l.Pos(), 12; got != want {
+			t.Errorf("Pos: want: %v, got: %v", want, got)
+		}
+
+		if got, want := l.Line(), 1; got != want {
+			t.Errorf("Line: want: %v, got: %v", want, got)
+		}
+
+		if got, want := l.Column(), 6; got != want {
+			t.Errorf("Column: want: %v, got: %v", want, got)
+		}
+
+		lexeme := l.Lexeme(wordType)
+		if got, want := lexeme.Value, ""; got != want {
+			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
+		}
+		if got, want := lexeme.Pos, 12; got != want {
+			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
+		}
+
+		if got, want := lexeme.Line, 1; got != want {
+			t.Errorf("lexeme.Line: want: %v, got: %v", want, got)
+		}
+
+		if got, want := lexeme.Column, 6; got != want {
+			t.Errorf("lexeme.Column: want: %v, got: %v", want, got)
 		}
 	})
 }

@@ -16,34 +16,11 @@
 // generic lexers and parsers over byte streams.
 package lexparse
 
+import "context"
+
 // LexParse runs the Lexer passing lexemes to the parser functions.
-func LexParse[V any](r BufferedRuneReader, initState State, initFn ParseFn[V]) (*Tree[V], error) {
-	// // FIXME: Implement
-	// l := NewLexer(r, initState)
-
-	// var lexErr error
-	// go func() {
-	// 	lexErr := l.Lex()
-	// }()
-
-	// // // FIXME: Use Parser.
-	// p := NewParser[string](l)
-	// parseFn := initFn
-	// var err error
-	// for {
-	// 	parseFn, err = parseFn(p)
-	// 	if err != nil {
-	// 		// TODO: if the parser encounters an error stop the lexer
-	// 		return p.Tree(), err
-	// 	}
-	// 	if parseFn == nil {
-	// 		break
-	// 	}
-	// }
-	// if lexErr != nil {
-
-	// }
-
-	// return p.Tree(), err
-	return nil, nil
+func LexParse[V any](ctx context.Context, r BufferedRuneReader, initState State, initFn ParseFn[V]) (*Tree[V], error) {
+	l := NewLexer(r, initState)
+	p := NewParser[V](l.Lex(ctx))
+	return p.Parse(ctx, initFn)
 }

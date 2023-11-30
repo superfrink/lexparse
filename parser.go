@@ -14,6 +14,12 @@
 
 package lexparse
 
+import (
+	"context"
+	"errors"
+	"io"
+)
+
 // TODO(#459): Implement parser
 
 type Tree[V any] struct {
@@ -28,12 +34,12 @@ type Node[V any] struct {
 }
 
 // FIXME: Remove channel
-type ParseFn[V any] func(*Parser[V]) (ParseFn[V], error)
+type ParseFn[V any] func(context.Context, *Parser[V]) (ParseFn[V], error)
 
-func NewParser[V any](l *Lexer) *Parser[V] {
+func NewParser[V any](lexemes <-chan *Lexeme) *Parser[V] {
 	root := &Node[V]{}
 	p := &Parser[V]{
-		lexer: l,
+		lexemes: lexemes,
 		tree: &Tree[V]{
 			Root: root,
 		},
@@ -43,14 +49,38 @@ func NewParser[V any](l *Lexer) *Parser[V] {
 }
 
 type Parser[V any] struct {
-	lexer *Lexer
+	lexemes <-chan *Lexeme
 
 	tree *Tree[V]
 	// node is the current node under processing.
 	node *Node[V]
 
-	// lexeme is the currently read lexeme.
+	// lexeme is the next lexeme in the stream.
 	lexeme *Lexeme
+}
+
+func (p *Parser[V]) Parse(ctx context.Context, parseFn ParseFn[V]) (*Tree[V], error) {
+	for {
+		if parseFn == nil {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return p.Tree(), ctx.Err()
+		default:
+		}
+
+		var err error
+		parseFn, err = parseFn(ctx, p)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return p.Tree(), err
+		}
+	}
+	return p.Tree(), nil
 }
 
 func (p *Parser[V]) Tree() *Tree[V] {
@@ -62,7 +92,7 @@ func (p *Parser[V]) Peek() *Lexeme {
 	if p.lexeme != nil {
 		return p.lexeme
 	}
-	l, ok := <-p.lexer.lexemes
+	l, ok := <-p.lexemes
 	if !ok {
 		return nil
 	}

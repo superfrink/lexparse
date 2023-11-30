@@ -17,6 +17,7 @@ OUTPUT_FORMAT ?= $(shell if [ "${GITHUB_ACTIONS}" == "true" ]; then echo "github
 REPO_NAME = $(shell basename "$$(pwd)")
 
 TESTCOUNT ?= 1
+TESTTIMEOUT ?= 10m
 
 .PHONY: help
 help: ## Shows all targets and help from the Makefile (this message).
@@ -52,7 +53,7 @@ unit-test: ## Runs unit tests.
 		if [ "$(OUTPUT_FORMAT)" == "github" ]; then \
 			extraargs="-v"; \
 		fi; \
-		go test $$extraargs -mod=vendor -count=$(TESTCOUNT) -race -coverprofile=coverage.out -covermode=atomic ./...
+		go test $$extraargs -mod=vendor -timeout=$(TESTTIMEOUT) -count=$(TESTCOUNT) -race -coverprofile=coverage.out -covermode=atomic ./...
 
 ## Tools
 #####################################################################

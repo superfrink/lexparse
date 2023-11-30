@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -111,6 +112,9 @@ type Lexer struct {
 		// r is the underlying reader to read from.
 		r BufferedRuneReader
 
+		// b is a strings builder that stores the current lexeme value.
+		b strings.Builder
+
 		// pos is the current position in the input stream.
 		pos int
 
@@ -172,8 +176,12 @@ func (l *Lexer) Column() int {
 // ReadRune returns the next rune of input.
 func (l *Lexer) ReadRune() (rune, int, error) {
 	l.s.Lock()
-	defer l.s.Unlock()
+	rn, i, err := l.readrune()
+	l.s.Unlock()
+	return rn, i, err
+}
 
+func (l *Lexer) readrune() (rune, int, error) {
 	rn, n, err := l.s.r.ReadRune()
 	if err != nil {
 		//nolint:wrapcheck // Error doesn't need to be wrapped.
@@ -187,6 +195,7 @@ func (l *Lexer) ReadRune() (rune, int, error) {
 		l.s.column = 0
 	}
 
+	_, _ = l.s.b.WriteRune(rn)
 	return rn, n, nil
 }
 
@@ -208,13 +217,17 @@ func (l *Lexer) Peek(n int) ([]rune, error) {
 // current lexeme position.
 func (l *Lexer) Advance(n int) (int, error) {
 	l.s.Lock()
-	a, err := l.advance(n)
+	a, err := l.advance(n, false)
 	l.s.Unlock()
 	return a, err
 }
 
-func (l *Lexer) advance(n int) (int, error) {
+func (l *Lexer) advance(n int, discard bool) (int, error) {
 	var advanced int
+	if discard {
+		defer l.ignore()
+	}
+
 	// Minimum size the buffer of underlying reader could be expected to be.
 	minSize := 16
 	for n > 0 {
@@ -252,6 +265,11 @@ func (l *Lexer) advance(n int) (int, error) {
 				l.s.column++
 			}
 		}
+
+		if !discard {
+			l.s.b.WriteString(string(rn))
+		}
+
 		if dErr != nil {
 			return advanced, fmt.Errorf("discarding input: %w", err)
 		}
@@ -272,66 +290,87 @@ func (l *Lexer) advance(n int) (int, error) {
 // position.
 func (l *Lexer) Discard(n int) (int, error) {
 	l.s.Lock()
-	d, err := l.discard(n)
+	d, err := l.advance(n, true)
 	l.s.Unlock()
 	return d, err
 }
 
-func (l *Lexer) discard(n int) (int, error) {
-	a, err := l.advance(n)
-	l.ignore()
-	return a, err
-}
-
-// Find searches the input for the substring, advancing the reader and updating
-// the lexeme position to the starting position of the substring.
-func (l *Lexer) Find(s string) error {
+// Find searches the input for one of the given tokens, advancing the reader,
+// and stopping when one of the tokens is found. The token found is returned.
+func (l *Lexer) Find(tokens []string) (string, error) {
 	l.s.Lock()
 	defer l.s.Unlock()
 
-	lenS := len(s)
+	var maxLen int
+	for i := range tokens {
+		if len(tokens[i]) > maxLen {
+			maxLen = len(tokens[i])
+		}
+	}
+
+	for {
+		rns, err := l.s.r.Peek(maxLen)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return "", err
+		}
+		for j := range tokens {
+			if strings.HasPrefix(string(rns), tokens[j]) {
+				return tokens[j], nil
+			}
+		}
+
+		if _, _, err = l.readrune(); err != nil {
+			return "", err
+		}
+	}
+}
+
+// SkipTo searches the input for one of the given tokens, advancing the reader,
+// and stopping when one of the tokens is found. The data prior to the token is
+// discarded. The token found is returned.
+func (l *Lexer) SkipTo(tokens []string) (string, error) {
+	l.s.Lock()
+	defer l.s.Unlock()
+
+	var maxLen int
+	for i := range tokens {
+		if len(tokens[i]) > maxLen {
+			maxLen = len(tokens[i])
+		}
+	}
 
 	for {
 		bufS := l.s.r.Buffered()
-		if bufS < lenS {
-			bufS = lenS
+		if bufS < maxLen {
+			bufS = maxLen
 		}
 
 		rns, err := l.s.r.Peek(bufS)
 		if err != nil && !errors.Is(err, io.EOF) {
-			return err
+			return "", err
 		}
 
-		for i := 0; i < len(rns)-lenS+1; i++ {
-			if string(rns[i:i+lenS]) == s {
-				// We have found a match. Discard prior runes and return.
-				_, err := l.discard(i)
-				if err != nil {
-					return err
+		for i := 0; i < len(rns)-maxLen+1; i++ {
+			for j := range tokens {
+				if strings.HasPrefix(string(rns[i:i+maxLen]), tokens[j]) {
+					// We have found a match. Discard prior runes and return.
+					if _, err := l.advance(i, true); err != nil {
+						return "", err
+					}
+					return tokens[j], nil
 				}
-
-				// NOTE: Don't return error since we still have some runes left
-				// to read.
-				return nil
 			}
 		}
 
-		// Advance the reader by the runes peeked.
+		// Advance the reader by the runes peeked checked.
 		// NOTE: Only advance the reader the number of runes that could never
 		// match the substring. Not the full number peeked.
-		// NOTE: We must advance by the number of runes peeked (rather than
-		// bufS) since we may not have been able to read the same number of
-		// runes as requested.
-		toDiscard := len(rns) - lenS + 1
+		toDiscard := len(rns) - maxLen + 1
 		if toDiscard <= 0 {
 			toDiscard = 1
 		}
-		_, err = l.discard(toDiscard)
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
+		if _, err = l.advance(toDiscard, true); err != nil {
+			return "", err
 		}
 	}
 }
@@ -348,6 +387,7 @@ func (l *Lexer) ignore() {
 	l.s.startPos = l.s.pos
 	l.s.startLine = l.s.line
 	l.s.startColumn = l.s.column
+	l.s.b = strings.Builder{}
 }
 
 // Lex starts a new goroutine to parse the content. The caller can request that
@@ -406,26 +446,27 @@ func (l *Lexer) Done() <-chan struct{} {
 	return l.done
 }
 
-// Emit is used by State implementations to emit a lexeme at the current
-// position which will be passed on to the parser. If the lexer is not
-// currently active, this is a no-op.
-func (l *Lexer) Emit(typ LexemeType, val string) {
+// Lexeme returns a new Lexeme at the current position.
+func (l *Lexer) Lexeme(typ LexemeType) *Lexeme {
 	l.s.Lock()
 	lexeme := &Lexeme{
 		Type:   typ,
-		Value:  val,
+		Value:  l.s.b.String(),
 		Pos:    l.s.startPos,
 		Line:   l.s.startLine,
 		Column: l.s.startColumn,
 	}
 	l.s.Unlock()
-	l.EmitLexeme(lexeme)
+	return lexeme
 }
 
-// EmitLexeme is used by State implementations to emit a lexeme which will be passed
+// Emit is used by State implementations to emit a lexeme which will be passed
 // on to the parser. If the lexer is not currently active, this is a no-op.
-func (l *Lexer) EmitLexeme(lexeme *Lexeme) {
+func (l *Lexer) Emit(lexeme *Lexeme) {
 	if l.lexemes == nil {
+		return
+	}
+	if lexeme == nil {
 		return
 	}
 	l.lexemes <- lexeme
