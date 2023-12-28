@@ -383,7 +383,7 @@ func TestLexer_Find(t *testing.T) {
 	})
 }
 
-func TestLexer_Ignore_Advance(t *testing.T) {
+func TestLexer_Ignore(t *testing.T) {
 	t.Parallel()
 
 	t.Run("basic", func(t *testing.T) {
