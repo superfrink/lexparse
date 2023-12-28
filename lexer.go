@@ -355,8 +355,8 @@ func (l *Lexer) SkipTo(tokens []string) (string, error) {
 			for j := range tokens {
 				if strings.HasPrefix(string(rns[i:i+maxLen]), tokens[j]) {
 					// We have found a match. Discard prior runes and return.
-					if _, err = l.advance(i, true); err != nil {
-						return "", err
+					if _, advErr := l.advance(i, true); err != nil {
+						return "", advErr
 					}
 					return tokens[j], nil
 				}

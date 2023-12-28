@@ -389,25 +389,25 @@ func TestLexer_Ignore_Advance(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		t.Parallel()
 
-		l := NewLexer(runeio.NewReader(strings.NewReader("Ignore\n!Hello!\n")), &wordState{})
+		l := NewLexer(runeio.NewReader(strings.NewReader("Hello\n!Ignore!\n")), &wordState{})
 
-		advanced, err := l.Advance(8)
+		advanced, err := l.Advance(7)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if got, want := advanced, 8; got != want {
+		if got, want := advanced, 7; got != want {
 			t.Errorf("Advance: want: %v, got: %v", want, got)
 		}
 
-		rns, err := l.Peek(6)
+		rns, err := l.Peek(7)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if got, want := string(rns), "Hello!"; got != want {
+		if got, want := string(rns), "Ignore!"; got != want {
 			t.Errorf("Peek: want: %q, got: %q", want, got)
 		}
 
-		if got, want := l.Pos(), 8; got != want {
+		if got, want := l.Pos(), 7; got != want {
 			t.Errorf("Pos: want: %v, got: %v", want, got)
 		}
 
@@ -421,11 +421,11 @@ func TestLexer_Ignore_Advance(t *testing.T) {
 
 		l.Ignore()
 
-		advanced, err = l.Advance(6)
+		advanced, err = l.Advance(7)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if got, want := advanced, 6; got != want {
+		if got, want := advanced, 7; got != want {
 			t.Errorf("Advance: want: %v, got: %v", want, got)
 		}
 
@@ -445,15 +445,15 @@ func TestLexer_Ignore_Advance(t *testing.T) {
 			t.Errorf("Line: want: %v, got: %v", want, got)
 		}
 
-		if got, want := l.Column(), 7; got != want {
+		if got, want := l.Column(), 8; got != want {
 			t.Errorf("Column: want: %v, got: %v", want, got)
 		}
 
 		lexeme := l.Lexeme(wordType)
-		if got, want := lexeme.Value, "Hello!"; got != want {
+		if got, want := lexeme.Value, "Ignore!"; got != want {
 			t.Errorf("lexeme.Value: want: %q, got: %q", want, got)
 		}
-		if got, want := lexeme.Pos, 8; got != want {
+		if got, want := lexeme.Pos, 7; got != want {
 			t.Errorf("lexeme.Pos: want: %v, got: %v", want, got)
 		}
 
