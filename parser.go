@@ -17,6 +17,7 @@ package lexparse
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -136,5 +137,86 @@ func (p *Parser[V]) Node(v V) *Node[V] {
 func (p *Parser[V]) Pop() *Node[V] {
 	n := p.node
 	p.node = p.node.Parent
+	return n
+}
+
+// RotateLeft moves the current node to the position it's parent had,
+// making the parent into the current node's child.
+func (p *Parser[V]) RotateLeft() *Node[V] {
+	// n = node , op = original parent , gp = grand parent
+	n := p.node
+	op := n.Parent
+	gp := op.Parent
+
+	fmt.Printf("before\nn:  %+v\nop: %+v\ngp: %+v\n", n, op, gp)
+
+	// Remove n from op's Children
+	opChildren := op.Children[:0]
+	for _, x := range op.Children {
+		if x != n {
+			opChildren = append(opChildren, x)
+		}
+	}
+	op.Children = opChildren
+
+	// Add op to n's Children
+	n.Children = append(n.Children, op)
+
+	// Update op's Parent
+	op.Parent = n
+
+	// Update n's Parent
+	n.Parent = gp
+
+	// Replace op with n in gp's Children
+	gpChildren := gp.Children[:0]
+	for _, x := range gp.Children {
+		if x != op {
+			gpChildren = append(gpChildren, x)
+		} else {
+			gpChildren = append(gpChildren, n)
+		}
+	}
+	gp.Children = gpChildren
+
+	fmt.Printf("after\nn:  %+v\nop: %+v\ngp: %+v\n", n, op, gp)
+	return n
+}
+
+// AdoptSibling moves the current node's parent's previous child to be the
+// current node's child.
+func (p *Parser[V]) AdoptSibling() *Node[V] {
+
+	// n = node , op = original parent , s = sibling
+	n := p.node
+	op := n.Parent
+	var s *Node[V]
+
+	// Find the previous sibling
+	for _, x := range op.Children {
+		if x == n {
+			break
+		}
+		s = x
+	}
+	fmt.Printf("before\nn:  %+v\nop: %+v\ns: %+v\n", n, op, s)
+
+	// Remove s from op's Children
+	opChildren := op.Children[:0]
+	for _, x := range op.Children {
+		if x != s {
+			opChildren = append(opChildren, x)
+		}
+	}
+	op.Children = opChildren
+
+	// Add s to n's Children
+	n.Children = append(n.Children, s)
+
+	// Update s's Parent
+	s.Parent = n
+
+	fmt.Printf("after\nn:  %+v\nop: %+v\ns: %+v\n", n, op, s)
+
 	return n
 }
