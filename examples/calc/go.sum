@@ -1,0 +1,4 @@
+github.com/ianlewis/lexparse v0.0.0-20231130075339-f4c1c1403ce7 h1:cxKTcGPuUGrFhijUVajRYsjwshQeaZKCGzhGqs+WJlg=
+github.com/ianlewis/lexparse v0.0.0-20231130075339-f4c1c1403ce7/go.mod h1:oEycCRYSwsLblLFr2+cPognpUzfhVxwT5MDCgHrzXG0=
+github.com/ianlewis/runeio v1.1.1 h1:HOdj/6dytZFBAuK8FRjjrdLPcvs2jfX0ELEcNwHp6RM=
+github.com/ianlewis/runeio v1.1.1/go.mod h1:hM+Z7HfSnXU2NNvh09Aphh0UMAftz5uwFbEz7baLNT4=
