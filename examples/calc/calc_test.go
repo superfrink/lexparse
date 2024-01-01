@@ -15,7 +15,7 @@ import (
 
 var (
 	errTreeMismatchSize  = errors.New("trees have different number of nodes")
-	errTreeMismatchValue = errors.New("trees node values do not match")
+	errTreeMismatchValue = errors.New("tree node values do not match")
 )
 
 // walkTree walks a parse tree and sends a string value of each node to the channel.
@@ -69,10 +69,9 @@ func compareTrees[T any](tr1, tr2 *lexparse.Tree[T]) (bool, error) {
 	return true, nil
 }
 
-func TestAdd(t *testing.T) {
-	t.Parallel()
+func testExpectedTree(t *testing.T, input string, expected *lexparse.Tree[calcToken]) {
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2")), &lexState{})
+	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader(input)), &lexState{})
 
 	lexemes := l.Lex(context.Background())
 
@@ -87,8 +86,26 @@ func TestAdd(t *testing.T) {
 
 	// fmt.Printf("\ntree: %+v\n", tree)
 	// printTreeNodes(0, tree.Root)
+	//
+	// fmt.Printf("\nexpected: %+v\n", expected)
+	// printTreeNodes(0, expected.Root)
 
-	expectedTree := &lexparse.Tree[calcToken]{
+	got, expErr := compareTrees[calcToken](tree, expected)
+	if expErr != nil {
+		t.Errorf("error expected trees do not match: %s", expErr)
+	}
+	want := true
+	if got != want {
+		t.Errorf("trees match: want: %v, got: %v", want, got)
+	}
+}
+
+func TestAdd(t *testing.T) {
+	// t.Parallel()
+
+	input := "1 + 2"
+
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -115,39 +132,15 @@ func TestAdd(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestAdd2(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 + 3")), &lexState{})
+	input := "1 + 2 + 3"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -188,39 +181,15 @@ func TestAdd2(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestAddMul(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 * 3")), &lexState{})
+	input := "1 + 2 * 3"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -261,39 +230,15 @@ func TestAddMul(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestDiv(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 / 2")), &lexState{})
+	input := "1 / 2"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -320,39 +265,15 @@ func TestDiv(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestDiv2(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 / 2 / 3")), &lexState{})
+	input := "1 / 2 / 3"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -393,39 +314,15 @@ func TestDiv2(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestDivMul(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 / 2 * 3")), &lexState{})
+	input := "1 / 2 * 3"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -466,39 +363,15 @@ func TestDivMul(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestMul(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2")), &lexState{})
+	input := "1 * 2"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -525,39 +398,15 @@ func TestMul(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestMul2(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2 * 3")), &lexState{})
+	input := "1 * 2 * 3"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -598,39 +447,36 @@ func TestMul2(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
+// func TestNumber(t *testing.T) {
+// 	// t.Parallel()
+//
+// 	input := "12"
+//
+// 	expected := &lexparse.Tree[calcToken]{
+// 		Root: &lexparse.Node[calcToken]{
+// 			Children: []*lexparse.Node[calcToken]{
+// 				{
+// 					Value: calcToken{
+// 						Type:  natNumberToken,
+// 						Value: "1",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+//
+// 	testExpectedTree(t, input, expected)
+// }
+
 func TestSpace(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 +  2")), &lexState{})
+	input := "1 +  2"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -657,39 +503,15 @@ func TestSpace(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
 
 func TestSpaceB(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1  +  2")), &lexState{})
+	input := "1  +  2"
 
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
+	expected := &lexparse.Tree[calcToken]{
 		Root: &lexparse.Node[calcToken]{
 			Children: []*lexparse.Node[calcToken]{
 				{
@@ -716,15 +538,5 @@ func TestSpaceB(t *testing.T) {
 		},
 	}
 
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
+	testExpectedTree(t, input, expected)
 }
