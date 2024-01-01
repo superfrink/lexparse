@@ -201,10 +201,10 @@ func TestAdd2(t *testing.T) {
 	}
 }
 
-func TestMul(t *testing.T) {
+func TestAddMul(t *testing.T) {
 	t.Parallel()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2")), &lexState{})
+	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 * 3")), &lexState{})
 
 	lexemes := l.Lex(context.Background())
 
@@ -225,8 +225,8 @@ func TestMul(t *testing.T) {
 			Children: []*lexparse.Node[calcToken]{
 				{
 					Value: calcToken{
-						Type:  mulOpToken,
-						Value: "*",
+						Type:  addOpToken,
+						Value: "+",
 					},
 					Children: []*lexparse.Node[calcToken]{
 						{
@@ -237,59 +237,6 @@ func TestMul(t *testing.T) {
 						},
 						{
 							Value: calcToken{
-								Type:  natNumberToken,
-								Value: "2",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// fmt.Printf("\nexpected: %+v\n", expectedTree)
-	// printTreeNodes(0, expectedTree.Root)
-
-	got, expErr := compareTrees[calcToken](tree, expectedTree)
-	if expErr != nil {
-		t.Errorf("error expected trees do not match: %s", expErr)
-	}
-	want := true
-	if got != want {
-		t.Errorf("trees match: want: %v, got: %v", want, got)
-	}
-}
-
-func TestMul2(t *testing.T) {
-	t.Parallel()
-
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2 * 3")), &lexState{})
-
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
-	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
-	}
-
-	// fmt.Printf("\ntree: %+v\n", tree)
-	// printTreeNodes(0, tree.Root)
-
-	expectedTree := &lexparse.Tree[calcToken]{
-		Root: &lexparse.Node[calcToken]{
-			Children: []*lexparse.Node[calcToken]{
-				{
-					Value: calcToken{
-						Type:  mulOpToken,
-						Value: "*",
-					},
-					Children: []*lexparse.Node[calcToken]{
-						{
-							Value: calcToken{
 								Type:  mulOpToken,
 								Value: "*",
 							},
@@ -297,21 +244,15 @@ func TestMul2(t *testing.T) {
 								{
 									Value: calcToken{
 										Type:  natNumberToken,
-										Value: "1",
+										Value: "2",
 									},
 								},
 								{
 									Value: calcToken{
 										Type:  natNumberToken,
-										Value: "2",
+										Value: "3",
 									},
 								},
-							},
-						},
-						{
-							Value: calcToken{
-								Type:  natNumberToken,
-								Value: "3",
 							},
 						},
 					},
@@ -465,6 +406,211 @@ func TestDiv2(t *testing.T) {
 	}
 }
 
+func TestDivMul(t *testing.T) {
+	t.Parallel()
+
+	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 / 2 * 3")), &lexState{})
+
+	lexemes := l.Lex(context.Background())
+
+	p := lexparse.NewParser[calcToken](lexemes)
+	pFn := myParseFn(p)
+
+	ctx := context.Background()
+	tree, err := p.Parse(ctx, pFn)
+	if err != nil {
+		log.Fatalf("unexpected error: %v", err)
+	}
+
+	// fmt.Printf("\ntree: %+v\n", tree)
+	// printTreeNodes(0, tree.Root)
+
+	expectedTree := &lexparse.Tree[calcToken]{
+		Root: &lexparse.Node[calcToken]{
+			Children: []*lexparse.Node[calcToken]{
+				{
+					Value: calcToken{
+						Type:  mulOpToken,
+						Value: "*",
+					},
+					Children: []*lexparse.Node[calcToken]{
+						{
+							Value: calcToken{
+								Type:  mulOpToken,
+								Value: "/",
+							},
+							Children: []*lexparse.Node[calcToken]{
+								{
+									Value: calcToken{
+										Type:  natNumberToken,
+										Value: "1",
+									},
+								},
+								{
+									Value: calcToken{
+										Type:  natNumberToken,
+										Value: "2",
+									},
+								},
+							},
+						},
+						{
+							Value: calcToken{
+								Type:  natNumberToken,
+								Value: "3",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// fmt.Printf("\nexpected: %+v\n", expectedTree)
+	// printTreeNodes(0, expectedTree.Root)
+
+	got, expErr := compareTrees[calcToken](tree, expectedTree)
+	if expErr != nil {
+		t.Errorf("error expected trees do not match: %s", expErr)
+	}
+	want := true
+	if got != want {
+		t.Errorf("trees match: want: %v, got: %v", want, got)
+	}
+}
+
+func TestMul(t *testing.T) {
+	t.Parallel()
+
+	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2")), &lexState{})
+
+	lexemes := l.Lex(context.Background())
+
+	p := lexparse.NewParser[calcToken](lexemes)
+	pFn := myParseFn(p)
+
+	ctx := context.Background()
+	tree, err := p.Parse(ctx, pFn)
+	if err != nil {
+		log.Fatalf("unexpected error: %v", err)
+	}
+
+	// fmt.Printf("\ntree: %+v\n", tree)
+	// printTreeNodes(0, tree.Root)
+
+	expectedTree := &lexparse.Tree[calcToken]{
+		Root: &lexparse.Node[calcToken]{
+			Children: []*lexparse.Node[calcToken]{
+				{
+					Value: calcToken{
+						Type:  mulOpToken,
+						Value: "*",
+					},
+					Children: []*lexparse.Node[calcToken]{
+						{
+							Value: calcToken{
+								Type:  natNumberToken,
+								Value: "1",
+							},
+						},
+						{
+							Value: calcToken{
+								Type:  natNumberToken,
+								Value: "2",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// fmt.Printf("\nexpected: %+v\n", expectedTree)
+	// printTreeNodes(0, expectedTree.Root)
+
+	got, expErr := compareTrees[calcToken](tree, expectedTree)
+	if expErr != nil {
+		t.Errorf("error expected trees do not match: %s", expErr)
+	}
+	want := true
+	if got != want {
+		t.Errorf("trees match: want: %v, got: %v", want, got)
+	}
+}
+
+func TestMul2(t *testing.T) {
+	t.Parallel()
+
+	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2 * 3")), &lexState{})
+
+	lexemes := l.Lex(context.Background())
+
+	p := lexparse.NewParser[calcToken](lexemes)
+	pFn := myParseFn(p)
+
+	ctx := context.Background()
+	tree, err := p.Parse(ctx, pFn)
+	if err != nil {
+		log.Fatalf("unexpected error: %v", err)
+	}
+
+	// fmt.Printf("\ntree: %+v\n", tree)
+	// printTreeNodes(0, tree.Root)
+
+	expectedTree := &lexparse.Tree[calcToken]{
+		Root: &lexparse.Node[calcToken]{
+			Children: []*lexparse.Node[calcToken]{
+				{
+					Value: calcToken{
+						Type:  mulOpToken,
+						Value: "*",
+					},
+					Children: []*lexparse.Node[calcToken]{
+						{
+							Value: calcToken{
+								Type:  mulOpToken,
+								Value: "*",
+							},
+							Children: []*lexparse.Node[calcToken]{
+								{
+									Value: calcToken{
+										Type:  natNumberToken,
+										Value: "1",
+									},
+								},
+								{
+									Value: calcToken{
+										Type:  natNumberToken,
+										Value: "2",
+									},
+								},
+							},
+						},
+						{
+							Value: calcToken{
+								Type:  natNumberToken,
+								Value: "3",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// fmt.Printf("\nexpected: %+v\n", expectedTree)
+	// printTreeNodes(0, expectedTree.Root)
+
+	got, expErr := compareTrees[calcToken](tree, expectedTree)
+	if expErr != nil {
+		t.Errorf("error expected trees do not match: %s", expErr)
+	}
+	want := true
+	if got != want {
+		t.Errorf("trees match: want: %v, got: %v", want, got)
+	}
+}
+
 func TestSpace(t *testing.T) {
 	t.Parallel()
 
@@ -523,6 +669,7 @@ func TestSpace(t *testing.T) {
 		t.Errorf("trees match: want: %v, got: %v", want, got)
 	}
 }
+
 func TestSpaceB(t *testing.T) {
 	t.Parallel()
 
