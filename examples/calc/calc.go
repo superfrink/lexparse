@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/ianlewis/lexparse"
@@ -40,9 +42,17 @@ func (w *lexState) Run(_ context.Context, l *lexparse.Lexer) (lexparse.State, er
 	w.CurrentToken = noToken
 
 	for {
+		// fmt.Printf("cur token: %d\n", w.CurrentToken)
+
 		rn, _, err := l.ReadRune()
+		// fmt.Printf("rn: %q\n", rn)
+
 		// TODO: remove need for spaces between lexemes
-		if rn == ' ' || errors.Is(err, io.EOF) {
+		if rn == ' ' && w.CurrentToken == noToken {
+			// eat the space
+			l.Ignore()
+
+		} else if rn == ' ' || errors.Is(err, io.EOF) {
 			word := l.Lexeme(w.CurrentToken)
 			word.Value = strings.TrimRight(word.Value, " ")
 			if word.Value != "" {
@@ -80,34 +90,27 @@ func (w *lexState) Run(_ context.Context, l *lexparse.Lexer) (lexparse.State, er
 
 // printTreeNodes walks tree nodes and prints a visualization of the tree.
 func printTreeNodes[T any](n int, node *lexparse.Node[T]) {
-	log.Printf(strings.Repeat(" ", n)+"Value: %+v", node.Value)
+	log.Printf(strings.Repeat(" ", n)+"[%T] Value: [%T]  %+v", node, node.Value, node.Value)
 
 	for _, c := range node.Children {
 		printTreeNodes[T](n+1, c)
 	}
 }
 
-func main() {
+func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
 
-	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("10 + 2 * 3")), &lexState{})
-	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 + 3")), &lexState{})
-	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2 * 3")), &lexState{})
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 * 3")), &lexState{})
-	lexemes := l.Lex(context.Background())
-	fmt.Printf("lexemes: %+t\n", lexemes)
+	return func(_ context.Context, _ *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
+		stack := []calcToken{}
 
-	p := lexparse.NewParser[calcToken](lexemes)
-	stack := []calcToken{}
-	myParseFn := func(_ context.Context, pFn *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
 		for {
-			fmt.Printf("\nstack: %+v\n", stack)
-			printTreeNodes(0, p.Tree().Root)
+			// fmt.Printf("\nstack: %+v\n", stack)
+			// printTreeNodes(0, p.Tree().Root)
 
 			lexeme := p.Next()
 			if lexeme == nil {
 				break
 			}
-			fmt.Printf("lexeme: %+v\n", lexeme)
+			// fmt.Printf("lexeme: %+v\n", lexeme)
 			token := calcToken{
 				Type:  lexeme.Type,
 				Value: lexeme.Value,
@@ -135,10 +138,16 @@ func main() {
 					p.Node(prevToken)
 					p.Node(nextToken)
 
-				} else {
+				} else if p.Pos().Value.Type == addOpToken {
 					p.Push(token)
 					p.AdoptSibling()
 					p.Node(nextToken)
+
+				} else if p.Pos().Value.Type == mulOpToken {
+					p.Push(token)
+					p.RotateLeft()
+					p.Node(nextToken)
+				} else {
 				}
 
 			case addOpToken:
@@ -175,9 +184,26 @@ func main() {
 		}
 		return nil, nil
 	}
+}
+
+func main() {
+
+	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("10 + 2 * 3")), &lexState{})
+	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 + 3")), &lexState{})
+	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2 * 3")), &lexState{})
+	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 * 3")), &lexState{})
+
+	inReader := bufio.NewReader(os.Stdin)
+
+	l := lexparse.NewLexer(runeio.NewReader(inReader), &lexState{})
+	lexemes := l.Lex(context.Background())
+	fmt.Printf("lexemes: %T\n", lexemes)
+
+	p := lexparse.NewParser[calcToken](lexemes)
+	pFn := myParseFn(p)
 
 	ctx := context.Background()
-	tree, err := p.Parse(ctx, myParseFn)
+	tree, err := p.Parse(ctx, pFn)
 	if err != nil {
 		log.Fatalf("unexpected error: %v", err)
 	}

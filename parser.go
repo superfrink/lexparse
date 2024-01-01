@@ -17,7 +17,6 @@ package lexparse
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -148,7 +147,7 @@ func (p *Parser[V]) RotateLeft() *Node[V] {
 	op := n.Parent
 	gp := op.Parent
 
-	fmt.Printf("before\nn:  %+v\nop: %+v\ngp: %+v\n", n, op, gp)
+	// fmt.Printf("before\nn:  %+v\nop: %+v\ngp: %+v\n", n, op, gp)
 
 	// Remove n from op's Children
 	opChildren := op.Children[:0]
@@ -179,7 +178,7 @@ func (p *Parser[V]) RotateLeft() *Node[V] {
 	}
 	gp.Children = gpChildren
 
-	fmt.Printf("after\nn:  %+v\nop: %+v\ngp: %+v\n", n, op, gp)
+	// fmt.Printf("after\nn:  %+v\nop: %+v\ngp: %+v\n", n, op, gp)
 	return n
 }
 
@@ -199,7 +198,7 @@ func (p *Parser[V]) AdoptSibling() *Node[V] {
 		}
 		s = x
 	}
-	fmt.Printf("before\nn:  %+v\nop: %+v\ns: %+v\n", n, op, s)
+	// fmt.Printf("before\nn:  %+v\nop: %+v\ns: %+v\n", n, op, s)
 
 	// Remove s from op's Children
 	opChildren := op.Children[:0]
@@ -216,7 +215,7 @@ func (p *Parser[V]) AdoptSibling() *Node[V] {
 	// Update s's Parent
 	s.Parent = n
 
-	fmt.Printf("after\nn:  %+v\nop: %+v\ns: %+v\n", n, op, s)
+	// fmt.Printf("after\nn:  %+v\nop: %+v\ns: %+v\n", n, op, s)
 
 	return n
 }
