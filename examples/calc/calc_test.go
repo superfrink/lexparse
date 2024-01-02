@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/ianlewis/lexparse"
+
 	"github.com/ianlewis/runeio"
 )
 
@@ -25,7 +25,7 @@ func walkTree[T any](tr *lexparse.Tree[T], ch chan<- string) {
 	doWalkTree(ch, "", tr.Root)
 }
 
-// doWalkTree is a recursive worker function used by walkTree.
+// doWalkTree is a recursive helper function used by walkTree.
 func doWalkTree[T any](ch chan<- string, depth string, node *lexparse.Node[T]) {
 	if node == nil {
 		return
@@ -69,20 +69,19 @@ func compareTrees[T any](tr1, tr2 *lexparse.Tree[T]) (bool, error) {
 	return true, nil
 }
 
+func testExpectedFail(t *testing.T, input string) {
+	_, err := testParse(t, input)
+	if err == nil {
+		t.Fatalf("parse err expected to be not nil on input: %q", input)
+	}
+}
+
 func testExpectedTree(t *testing.T, input string, expected *lexparse.Tree[calcToken]) {
 	t.Helper()
 
-	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader(input)), &lexState{})
-
-	lexemes := l.Lex(context.Background())
-
-	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
-
-	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
+	tree, err := testParse(t, input)
 	if err != nil {
-		log.Fatalf("unexpected error: %v", err)
+		t.Errorf("parsing input: %s", err)
 	}
 
 	// fmt.Printf("\ntree: %+v\n", tree)
@@ -99,6 +98,22 @@ func testExpectedTree(t *testing.T, input string, expected *lexparse.Tree[calcTo
 	if got != want {
 		t.Errorf("trees match: want: %v, got: %v", want, got)
 	}
+}
+
+func testParse(t *testing.T, input string) (*lexparse.Tree[calcToken], error) {
+	t.Helper()
+
+	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader(input)), &lexState{})
+
+	lexemes := l.Lex(context.Background())
+
+	p := lexparse.NewParser[calcToken](lexemes)
+	pFn := myParseFn(p)
+
+	ctx := context.Background()
+	tree, err := p.Parse(ctx, pFn)
+	//nolint:wrapcheck // Intentionally returning parser err
+	return tree, err
 }
 
 func TestAdd(t *testing.T) {
@@ -365,6 +380,19 @@ func TestDivMul(t *testing.T) {
 	}
 
 	testExpectedTree(t, input, expected)
+}
+
+func TestMissingNumber(t *testing.T) {
+	t.Parallel()
+
+	input := []string{
+		"1 +",
+		"+ 2",
+	}
+
+	for _, s := range input {
+		testExpectedFail(t, s)
+	}
 }
 
 func TestMul(t *testing.T) {

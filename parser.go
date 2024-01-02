@@ -168,15 +168,17 @@ func (p *Parser[V]) RotateLeft() *Node[V] {
 	n.Parent = gp
 
 	// Replace op with n in gp's Children
-	gpChildren := gp.Children[:0]
-	for _, x := range gp.Children {
-		if x != op {
-			gpChildren = append(gpChildren, x)
-		} else {
-			gpChildren = append(gpChildren, n)
+	if gp != nil {
+		gpChildren := gp.Children[:0]
+		for _, x := range gp.Children {
+			if x != op {
+				gpChildren = append(gpChildren, x)
+			} else {
+				gpChildren = append(gpChildren, n)
+			}
 		}
+		gp.Children = gpChildren
 	}
-	gp.Children = gpChildren
 
 	// fmt.Printf("after\nn:  %+v\nop: %+v\ngp: %+v\n", n, op, gp)
 	return n
