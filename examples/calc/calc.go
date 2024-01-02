@@ -106,13 +106,13 @@ func myParseFn(p *lexparse.Parser[calcToken]) func(
 ) {
 	return func(_ context.Context, _ *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
 		for {
-			printTreeNodes(0, p.Tree().Root)
+			// printTreeNodes(0, p.Tree().Root)
 
 			lexeme := p.Next()
 			if lexeme == nil {
 				break
 			}
-			fmt.Printf("lexeme: %+v\n", lexeme)
+			// fmt.Printf("lexeme: %+v\n", lexeme)
 			token := calcToken{
 				Type:  lexeme.Type,
 				Value: lexeme.Value,
