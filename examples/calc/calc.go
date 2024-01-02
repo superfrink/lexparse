@@ -100,10 +100,8 @@ func printTreeNodes[T any](n int, node *lexparse.Node[T]) {
 func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
 
 	return func(_ context.Context, _ *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
-		stack := []calcToken{}
 
 		for {
-			// fmt.Printf("\nstack: %+v\n", stack)
 			// printTreeNodes(0, p.Tree().Root)
 
 			lexeme := p.Next()
@@ -127,27 +125,19 @@ func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Pa
 					Value: nextLexeme.Value,
 				}
 
-				var prevToken calcToken
-				if len(stack) > 0 {
-					prevToken, stack = stack[0], stack[1:]
-					if prevToken.Type != natNumberToken {
-						return nil, fmt.Errorf("number not found before mulOp: %+v", prevToken)
-					}
-
+				switch p.Pos().Value.Type {
+				case natNumberToken, mulOpToken:
 					p.Push(token)
-					p.Node(prevToken)
+					p.RotateLeft()
 					p.Node(nextToken)
 
-				} else if p.Pos().Value.Type == addOpToken {
+				case addOpToken:
 					p.Push(token)
 					p.AdoptSibling()
 					p.Node(nextToken)
 
-				} else if p.Pos().Value.Type == mulOpToken {
-					p.Push(token)
-					p.RotateLeft()
-					p.Node(nextToken)
-				} else {
+				default:
+					return nil, fmt.Errorf("unexpected token found before mulOp: %+v", p.Pos().Value)
 				}
 
 			case addOpToken:
@@ -161,25 +151,12 @@ func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Pa
 					Value: nextLexeme.Value,
 				}
 
-				var prevToken calcToken
-				if len(stack) > 0 {
-					prevToken, stack = stack[0], stack[1:]
-					if prevToken.Type != natNumberToken {
-						return nil, fmt.Errorf("number not found before addOp: %+v", prevToken)
-					}
-
-					p.Push(token)
-					p.Node(prevToken)
-					p.Node(nextToken)
-
-				} else {
-					p.Push(token)
-					p.RotateLeft()
-					p.Node(nextToken)
-				}
+				p.Push(token)
+				p.RotateLeft()
+				p.Node(nextToken)
 
 			case natNumberToken:
-				stack = append(stack, token)
+				p.Push(token)
 			}
 		}
 		return nil, nil
@@ -187,11 +164,6 @@ func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Pa
 }
 
 func main() {
-
-	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("10 + 2 * 3")), &lexState{})
-	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 + 3")), &lexState{})
-	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 * 2 * 3")), &lexState{})
-	// l := lexparse.NewLexer(runeio.NewReader(strings.NewReader("1 + 2 * 3")), &lexState{})
 
 	inReader := bufio.NewReader(os.Stdin)
 
