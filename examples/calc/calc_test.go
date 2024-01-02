@@ -450,26 +450,75 @@ func TestMul2(t *testing.T) {
 	testExpectedTree(t, input, expected)
 }
 
-// func TestNumber(t *testing.T) {
-// 	// t.Parallel()
-//
-// 	input := "12"
-//
-// 	expected := &lexparse.Tree[calcToken]{
-// 		Root: &lexparse.Node[calcToken]{
-// 			Children: []*lexparse.Node[calcToken]{
-// 				{
-// 					Value: calcToken{
-// 						Type:  natNumberToken,
-// 						Value: "1",
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-//
-// 	testExpectedTree(t, input, expected)
-// }
+func TestMulAdd(t *testing.T) {
+	// t.Parallel()
+
+	input := "1 * 2 + 3"
+
+	expected := &lexparse.Tree[calcToken]{
+		Root: &lexparse.Node[calcToken]{
+			Children: []*lexparse.Node[calcToken]{
+				{
+					Value: calcToken{
+						Type:  addOpToken,
+						Value: "+",
+					},
+					Children: []*lexparse.Node[calcToken]{
+						{
+							Value: calcToken{
+								Type:  mulOpToken,
+								Value: "*",
+							},
+							Children: []*lexparse.Node[calcToken]{
+								{
+									Value: calcToken{
+										Type:  natNumberToken,
+										Value: "1",
+									},
+								},
+								{
+									Value: calcToken{
+										Type:  natNumberToken,
+										Value: "2",
+									},
+								},
+							},
+						},
+						{
+							Value: calcToken{
+								Type:  natNumberToken,
+								Value: "3",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	testExpectedTree(t, input, expected)
+}
+
+func TestNumber(t *testing.T) {
+	// t.Parallel()
+
+	input := "12"
+
+	expected := &lexparse.Tree[calcToken]{
+		Root: &lexparse.Node[calcToken]{
+			Children: []*lexparse.Node[calcToken]{
+				{
+					Value: calcToken{
+						Type:  natNumberToken,
+						Value: "12",
+					},
+				},
+			},
+		},
+	}
+
+	testExpectedTree(t, input, expected)
+}
 
 func TestSpace(t *testing.T) {
 	// t.Parallel()
@@ -532,6 +581,27 @@ func TestSpaceB(t *testing.T) {
 								Value: "2",
 							},
 						},
+					},
+				},
+			},
+		},
+	}
+
+	testExpectedTree(t, input, expected)
+}
+
+func TestSpaceNumber(t *testing.T) {
+	// t.Parallel()
+
+	input := " 12 "
+
+	expected := &lexparse.Tree[calcToken]{
+		Root: &lexparse.Node[calcToken]{
+			Children: []*lexparse.Node[calcToken]{
+				{
+					Value: calcToken{
+						Type:  natNumberToken,
+						Value: "12",
 					},
 				},
 			},
