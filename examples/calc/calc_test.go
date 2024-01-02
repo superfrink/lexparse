@@ -70,6 +70,7 @@ func compareTrees[T any](tr1, tr2 *lexparse.Tree[T]) (bool, error) {
 }
 
 func testExpectedTree(t *testing.T, input string, expected *lexparse.Tree[calcToken]) {
+	t.Helper()
 
 	l := lexparse.NewLexer(runeio.NewReader(strings.NewReader(input)), &lexState{})
 
@@ -101,7 +102,7 @@ func testExpectedTree(t *testing.T, input string, expected *lexparse.Tree[calcTo
 }
 
 func TestAdd(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 + 2"
 
@@ -136,7 +137,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestAdd2(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 + 2 + 3"
 
@@ -185,7 +186,7 @@ func TestAdd2(t *testing.T) {
 }
 
 func TestAddMul(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 + 2 * 3"
 
@@ -234,7 +235,7 @@ func TestAddMul(t *testing.T) {
 }
 
 func TestDiv(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 / 2"
 
@@ -269,7 +270,7 @@ func TestDiv(t *testing.T) {
 }
 
 func TestDiv2(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 / 2 / 3"
 
@@ -318,7 +319,7 @@ func TestDiv2(t *testing.T) {
 }
 
 func TestDivMul(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 / 2 * 3"
 
@@ -367,7 +368,7 @@ func TestDivMul(t *testing.T) {
 }
 
 func TestMul(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 * 2"
 
@@ -402,7 +403,7 @@ func TestMul(t *testing.T) {
 }
 
 func TestMul2(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 * 2 * 3"
 
@@ -451,7 +452,7 @@ func TestMul2(t *testing.T) {
 }
 
 func TestMulAdd(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 * 2 + 3"
 
@@ -500,7 +501,7 @@ func TestMulAdd(t *testing.T) {
 }
 
 func TestNumber(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "12"
 
@@ -521,7 +522,7 @@ func TestNumber(t *testing.T) {
 }
 
 func TestSpace(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1 +  2"
 
@@ -556,7 +557,7 @@ func TestSpace(t *testing.T) {
 }
 
 func TestSpaceB(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := "1  +  2"
 
@@ -591,7 +592,7 @@ func TestSpaceB(t *testing.T) {
 }
 
 func TestSpaceNumber(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	input := " 12 "
 

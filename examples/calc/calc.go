@@ -38,6 +38,8 @@ type lexState struct {
 	CurrentToken lexparse.LexemeType
 }
 
+var errUnexpectedToken = errors.New("unexpected token in input")
+
 func (w *lexState) Run(_ context.Context, l *lexparse.Lexer) (lexparse.State, error) {
 	w.CurrentToken = noToken
 
@@ -51,7 +53,6 @@ func (w *lexState) Run(_ context.Context, l *lexparse.Lexer) (lexparse.State, er
 		if rn == ' ' && w.CurrentToken == noToken {
 			// eat the space
 			l.Ignore()
-
 		} else if rn == ' ' || errors.Is(err, io.EOF) {
 			word := l.Lexeme(w.CurrentToken)
 			word.Value = strings.TrimRight(word.Value, " ")
@@ -59,32 +60,33 @@ func (w *lexState) Run(_ context.Context, l *lexparse.Lexer) (lexparse.State, er
 				l.Emit(word)
 			}
 			w.CurrentToken = noToken
-
 		} else {
 			switch rn {
 			case '*', '/':
 				if w.CurrentToken != noToken {
-					return nil, fmt.Errorf("unexpected %q in input", rn)
+					// FIXME: Parser does not see these errors because it is
+					//        reading lexemes from a channel and does not have
+					//        the Lexer to call Lexer.Err() and see this error
+					return nil, fmt.Errorf("%q found in mulOp, %w", rn, errUnexpectedToken)
 				}
 				w.CurrentToken = mulOpToken
 
 			case '+', '-':
 				if w.CurrentToken != noToken {
-					return nil, fmt.Errorf("unexpected %q in input", rn)
+					return nil, fmt.Errorf("%q found in addOp %w", rn, errUnexpectedToken)
 				}
 				w.CurrentToken = addOpToken
 
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 				if w.CurrentToken != noToken && w.CurrentToken != natNumberToken {
-					return nil, fmt.Errorf("unexpected %q in input", rn)
+					return nil, fmt.Errorf("%q found in number %w", rn, errUnexpectedToken)
 				}
 				w.CurrentToken = natNumberToken
 			}
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reading rune: %w", err)
 		}
-
 	}
 }
 
@@ -97,18 +99,20 @@ func printTreeNodes[T any](n int, node *lexparse.Node[T]) {
 	}
 }
 
-func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
-
+func myParseFn(p *lexparse.Parser[calcToken]) func(
+	context.Context, *lexparse.Parser[calcToken],
+) (
+	lexparse.ParseFn[calcToken], error,
+) {
 	return func(_ context.Context, _ *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
-
 		for {
-			// printTreeNodes(0, p.Tree().Root)
+			printTreeNodes(0, p.Tree().Root)
 
 			lexeme := p.Next()
 			if lexeme == nil {
 				break
 			}
-			// fmt.Printf("lexeme: %+v\n", lexeme)
+			fmt.Printf("lexeme: %+v\n", lexeme)
 			token := calcToken{
 				Type:  lexeme.Type,
 				Value: lexeme.Value,
@@ -117,7 +121,11 @@ func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Pa
 			case mulOpToken:
 				nextLexeme := p.Next()
 				if nextLexeme.Type != natNumberToken {
-					return nil, fmt.Errorf("number not found after mulOp: %+v", nextLexeme)
+					return nil, fmt.Errorf(
+						"number not found after mulOp: %q, %w",
+						nextLexeme,
+						errUnexpectedToken,
+					)
 				}
 
 				nextToken := calcToken{
@@ -137,13 +145,21 @@ func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Pa
 					p.Node(nextToken)
 
 				default:
-					return nil, fmt.Errorf("unexpected token found before mulOp: %+v", p.Pos().Value)
+					return nil, fmt.Errorf(
+						"number not found before mulOp: %q, %w",
+						p.Pos().Value,
+						errUnexpectedToken,
+					)
 				}
 
 			case addOpToken:
 				nextLexeme := p.Next()
 				if nextLexeme.Type != natNumberToken {
-					return nil, fmt.Errorf("number not found after addOp: %+v", nextLexeme)
+					return nil, fmt.Errorf(
+						"number not found after addOp: %q, %w",
+						nextLexeme,
+						errUnexpectedToken,
+					)
 				}
 
 				nextToken := calcToken{
@@ -164,7 +180,6 @@ func myParseFn(p *lexparse.Parser[calcToken]) func(context.Context, *lexparse.Pa
 }
 
 func main() {
-
 	inReader := bufio.NewReader(os.Stdin)
 
 	l := lexparse.NewLexer(runeio.NewReader(inReader), &lexState{})
