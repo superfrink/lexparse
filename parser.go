@@ -182,8 +182,7 @@ func (p *Parser[V]) RotateLeft() *Node[V] {
 	return n
 }
 
-// AdoptSibling moves the current node's parent's previous child to be the
-// current node's child.
+// AdoptSibling moves the current node's previous sibling into the node's child.
 func (p *Parser[V]) AdoptSibling() *Node[V] {
 
 	// n = node , op = original parent , s = sibling
