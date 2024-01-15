@@ -303,14 +303,13 @@ func doCalculate(n *lexparse.Node[calcToken]) (int, error) {
 }
 
 func main() {
+	ctx := context.Background()
 	inReader := bufio.NewReader(os.Stdin)
 
 	l := lexparse.NewLexer(runeio.NewReader(inReader), &lexState{})
-	lexemes := l.Lex(context.Background())
+	lexemes := l.Lex(ctx)
 
 	p := lexparse.NewParser[calcToken](lexemes)
-
-	ctx := context.Background()
 	tree, err := p.Parse(ctx, parseRoot)
 	if err != nil {
 		log.Fatalf("unexpected error: %v", err)
