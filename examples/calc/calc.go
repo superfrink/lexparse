@@ -105,106 +105,159 @@ func printTreeNodes[T any](n int, node *lexparse.Node[T]) {
 	}
 }
 
-func myParseFn(p *lexparse.Parser[calcToken]) func(
+// parseRoot is the primary parsing function.  It reads lexemes and
+// builds the parse tree by calling parsing functions specific to
+// language features.
+func parseRoot(_ context.Context, p *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
+	for {
+		lexeme := p.Peek()
+		if lexeme == nil {
+			break
+		}
+
+		switch lexeme.Type {
+		case mulOpToken:
+			return parseMulOp, nil
+
+		case addOpToken:
+			return parseAddOp, nil
+
+		case natNumberToken:
+			return parseNatNum, nil
+		}
+	}
+	return nil, nil
+}
+
+// parseAddOp parses Add and Subtract operators.
+func parseAddOp(_ context.Context, p *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
+
+	lexeme := p.Next()
+	if lexeme == nil {
+		return nil, errMissingToken
+	}
+	// fmt.Printf("lexeme: %+v\n", lexeme)
+	token := calcToken{
+		Type:  lexeme.Type,
+		Value: lexeme.Value,
+	}
+
+	nextLexeme := p.Next()
+	if nextLexeme == nil {
+		return nil, fmt.Errorf(
+			"nothing found after addOp: %w",
+			errMissingToken,
+		)
+	}
+	if nextLexeme.Type != natNumberToken {
+		return nil, fmt.Errorf(
+			"number not found after addOp: %q, %w",
+			nextLexeme.Value,
+			errUnexpectedToken,
+		)
+	}
+
+	nextToken := calcToken{
+		Type:  nextLexeme.Type,
+		Value: nextLexeme.Value,
+	}
+
+	switch p.Pos().Value.Type {
+	case natNumberToken, mulOpToken, addOpToken:
+		p.Push(token)
+		p.RotateLeft()
+		p.Node(nextToken)
+
+	default:
+		return nil, fmt.Errorf(
+			"number not found before addOp: %q, %w",
+			p.Pos().Value.Value,
+			errUnexpectedToken,
+		)
+	}
+
+	return parseRoot, nil
+}
+
+// parseMulOp parses Multiply and Divide operators.
+func parseMulOp(_ context.Context, p *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
+
+	lexeme := p.Next()
+	if lexeme == nil {
+		return nil, errMissingToken
+	}
+	// fmt.Printf("lexeme: %+v\n", lexeme)
+	token := calcToken{
+		Type:  lexeme.Type,
+		Value: lexeme.Value,
+	}
+
+	nextLexeme := p.Next()
+	if nextLexeme == nil {
+		return nil, fmt.Errorf(
+			"nothing found after mulOp: %w",
+			errMissingToken,
+		)
+	}
+	if nextLexeme.Type != natNumberToken {
+		return nil, fmt.Errorf(
+			"number not found after mulOp: %q, %w",
+			nextLexeme.Value,
+			errUnexpectedToken,
+		)
+	}
+
+	nextToken := calcToken{
+		Type:  nextLexeme.Type,
+		Value: nextLexeme.Value,
+	}
+
+	switch p.Pos().Value.Type {
+	case natNumberToken, mulOpToken:
+		p.Push(token)
+		p.RotateLeft()
+		p.Node(nextToken)
+
+	case addOpToken:
+		p.Push(token)
+		p.AdoptSibling()
+		p.Node(nextToken)
+
+	default:
+		return nil, fmt.Errorf(
+			"number not found before mulOp: %q, %w",
+			p.Pos().Value.Value,
+			errUnexpectedToken,
+		)
+	}
+
+	return parseRoot, nil
+}
+
+// parseNatNum parses natural numbers.
+func parseNatNum(_ context.Context, p *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
+
+	lexeme := p.Next()
+	if lexeme == nil {
+		return nil, errMissingToken
+	}
+	// fmt.Printf("lexeme: %+v\n", lexeme)
+	token := calcToken{
+		Type:  lexeme.Type,
+		Value: lexeme.Value,
+	}
+
+	p.Push(token)
+
+	return parseRoot, nil
+}
+
+func runParse(p *lexparse.Parser[calcToken]) func(
 	context.Context, *lexparse.Parser[calcToken],
 ) (
 	lexparse.ParseFn[calcToken], error,
 ) {
-	return func(_ context.Context, _ *lexparse.Parser[calcToken]) (lexparse.ParseFn[calcToken], error) {
-		for {
-			// printTreeNodes(0, p.Tree().Root)
-
-			lexeme := p.Next()
-			if lexeme == nil {
-				break
-			}
-			// fmt.Printf("lexeme: %+v\n", lexeme)
-			token := calcToken{
-				Type:  lexeme.Type,
-				Value: lexeme.Value,
-			}
-			switch lexeme.Type {
-			case mulOpToken:
-				nextLexeme := p.Next()
-				if nextLexeme == nil {
-					return nil, fmt.Errorf(
-						"nothing found after mulOp: %w",
-						errMissingToken,
-					)
-				}
-				if nextLexeme.Type != natNumberToken {
-					return nil, fmt.Errorf(
-						"number not found after mulOp: %q, %w",
-						nextLexeme.Value,
-						errUnexpectedToken,
-					)
-				}
-
-				nextToken := calcToken{
-					Type:  nextLexeme.Type,
-					Value: nextLexeme.Value,
-				}
-
-				switch p.Pos().Value.Type {
-				case natNumberToken, mulOpToken:
-					p.Push(token)
-					p.RotateLeft()
-					p.Node(nextToken)
-
-				case addOpToken:
-					p.Push(token)
-					p.AdoptSibling()
-					p.Node(nextToken)
-
-				default:
-					return nil, fmt.Errorf(
-						"number not found before mulOp: %q, %w",
-						p.Pos().Value.Value,
-						errUnexpectedToken,
-					)
-				}
-
-			case addOpToken:
-				nextLexeme := p.Next()
-				if nextLexeme == nil {
-					return nil, fmt.Errorf(
-						"nothing found after addOp: %w",
-						errMissingToken,
-					)
-				}
-				if nextLexeme.Type != natNumberToken {
-					return nil, fmt.Errorf(
-						"number not found after addOp: %q, %w",
-						nextLexeme.Value,
-						errUnexpectedToken,
-					)
-				}
-
-				nextToken := calcToken{
-					Type:  nextLexeme.Type,
-					Value: nextLexeme.Value,
-				}
-
-				switch p.Pos().Value.Type {
-				case natNumberToken, mulOpToken, addOpToken:
-					p.Push(token)
-					p.RotateLeft()
-					p.Node(nextToken)
-
-				default:
-					return nil, fmt.Errorf(
-						"number not found before addOp: %q, %w",
-						p.Pos().Value.Value,
-						errUnexpectedToken,
-					)
-				}
-
-			case natNumberToken:
-				p.Push(token)
-			}
-		}
-		return nil, nil
-	}
+	return parseRoot
 }
 
 // calculate performs the calulation represented by the parse tree.
@@ -264,10 +317,9 @@ func main() {
 	lexemes := l.Lex(context.Background())
 
 	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
 
 	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
+	tree, err := p.Parse(ctx, parseRoot)
 	if err != nil {
 		log.Fatalf("unexpected error: %v", err)
 	}

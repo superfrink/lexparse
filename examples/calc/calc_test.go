@@ -108,10 +108,9 @@ func testParse(t *testing.T, input string) (*lexparse.Tree[calcToken], error) {
 	lexemes := l.Lex(context.Background())
 
 	p := lexparse.NewParser[calcToken](lexemes)
-	pFn := myParseFn(p)
 
 	ctx := context.Background()
-	tree, err := p.Parse(ctx, pFn)
+	tree, err := p.Parse(ctx, parseRoot)
 	//nolint:wrapcheck // Intentionally returning parser err
 	return tree, err
 }
