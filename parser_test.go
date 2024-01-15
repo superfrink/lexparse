@@ -335,7 +335,16 @@ func TestParser_AdoptSibling(t *testing.T) {
 		t.Errorf("trees match: want: %v, got: %v", want, got)
 	}
 
-	p.AdoptSibling()
+	adoptNode, adoptErr := p.AdoptSibling()
+	wantNode := p.Pos()
+	var wantErr error
+	if adoptNode != wantNode {
+		t.Errorf("AdoptSibling node: want: %v, got: %v", wantNode, adoptNode)
+	}
+	if !errors.Is(adoptErr, wantErr) {
+		t.Errorf("AdoptSibling err: want: %v, got: %v", wantErr, adoptErr)
+	}
+
 	tree2 := p.Tree()
 	debugPrintTreeNodes[string](0, tree2.Root)
 
@@ -369,6 +378,45 @@ func TestParser_AdoptSibling(t *testing.T) {
 	want = true
 	if got != want {
 		t.Errorf("trees match: want: %v, got: %v", want, got)
+	}
+}
+
+func TestParser_AdoptSibling_empty(t *testing.T) {
+	t.Parallel()
+
+	input := inputABC
+	lexemes := testLexer(t, input)
+	p := NewParser[string](lexemes)
+
+	gotNode, gotErr := p.AdoptSibling()
+	var wantNode *Node[string]
+	wantErr := ErrMissingRequiredNode
+	if gotNode != wantNode {
+		t.Errorf("empty tree AdoptSibling node: want: %v, got: %v", wantNode, gotNode)
+	}
+	if !errors.Is(gotErr, wantErr) {
+		t.Errorf("empty tree AdoptSibling err: want: %v, got: %v", wantErr, gotErr)
+	}
+}
+
+func TestParser_AdoptSibling_notfound(t *testing.T) {
+	t.Parallel()
+
+	input := inputABC
+	lexemes := testLexer(t, input)
+	p := NewParser[string](lexemes)
+
+	p.Push("op")
+	p.Push("foo")
+
+	gotNode, gotErr := p.AdoptSibling()
+	var wantNode *Node[string]
+	wantErr := ErrMissingRequiredNode
+	if gotNode != wantNode {
+		t.Errorf("no sibling AdoptSibling node: want: %v, got: %v", wantNode, gotNode)
+	}
+	if !errors.Is(gotErr, wantErr) {
+		t.Errorf("no sibling AdoptSibling err: want: %v, got: %v", wantErr, gotErr)
 	}
 }
 
@@ -666,7 +714,16 @@ func TestParser_RotateLeft(t *testing.T) {
 	}
 
 	p.Push("foo")
-	p.RotateLeft()
+	rotNode, rotErr := p.RotateLeft()
+	wantNode := p.Pos()
+	var wantErr error
+	if rotNode != wantNode {
+		t.Errorf("RotateLeft node: want: %v, got: %v", wantNode, rotNode)
+	}
+	if !errors.Is(rotErr, wantErr) {
+		t.Errorf("RotateLeft err: want: %v, got: %v", wantErr, rotErr)
+	}
+
 	p.Node("3")
 	tree2 := p.Tree()
 	debugPrintTreeNodes[string](0, tree2.Root)
@@ -704,5 +761,23 @@ func TestParser_RotateLeft(t *testing.T) {
 	want = true
 	if got != want {
 		t.Errorf("trees match: want: %v, got: %v", want, got)
+	}
+}
+
+func TestParser_RotateLeft_empty(t *testing.T) {
+	t.Parallel()
+
+	input := inputABC
+	lexemes := testLexer(t, input)
+	p := NewParser[string](lexemes)
+
+	gotNode, gotErr := p.RotateLeft()
+	var wantNode *Node[string]
+	wantErr := ErrMissingRequiredNode
+	if gotNode != wantNode {
+		t.Errorf("empty tree RotateLeft node: want: %v, got: %v", wantNode, gotNode)
+	}
+	if !errors.Is(gotErr, wantErr) {
+		t.Errorf("empty tree RotateLeft err: want: %v, got: %v", wantErr, gotErr)
 	}
 }
