@@ -252,14 +252,6 @@ func parseNatNum(_ context.Context, p *lexparse.Parser[calcToken]) (lexparse.Par
 	return parseRoot, nil
 }
 
-func runParse(p *lexparse.Parser[calcToken]) func(
-	context.Context, *lexparse.Parser[calcToken],
-) (
-	lexparse.ParseFn[calcToken], error,
-) {
-	return parseRoot
-}
-
 // calculate performs the calulation represented by the parse tree.
 func calculate(tree *lexparse.Tree[calcToken]) (int, error) {
 	return doCalculate(tree.Root.Children[0])
