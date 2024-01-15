@@ -20,6 +20,10 @@ import (
 	"io"
 )
 
+// ErrMissingRequiredNode means the tree is missing nodes required to
+// perform an operation.
+var ErrMissingRequiredNode = errors.New("missing required node")
+
 // TODO(#459): Implement parser
 
 // Tree is the parse tree data structure.
@@ -149,12 +153,20 @@ func (p *Parser[V]) Pop() *Node[V] {
 	return n
 }
 
-// RotateLeft moves the current node to the position it's parent had,
-// making the parent into the current node's child.
-func (p *Parser[V]) RotateLeft() *Node[V] {
+// RotateLeft restructures the tree by moving the current node to the
+// position of its parent node.  The original parent node becomes a
+// child of the current node.  All other child nodes of the original
+// parent remain unchanged, except for the current node which becomes
+// the new parent.
+func (p *Parser[V]) RotateLeft() (*Node[V], error) {
 	// n = node , op = original parent , gp = grand parent
 	n := p.node
+
 	op := n.Parent
+	if op == nil {
+		return nil, ErrMissingRequiredNode
+	}
+
 	gp := op.Parent
 
 	// Remove n from op's Children
@@ -193,15 +205,19 @@ func (p *Parser[V]) RotateLeft() *Node[V] {
 		p.Tree().Root = n
 	}
 
-	return n
+	return n, nil
 }
 
 // AdoptSibling moves the current node's previous sibling into the node's child.
-func (p *Parser[V]) AdoptSibling() *Node[V] {
+func (p *Parser[V]) AdoptSibling() (*Node[V], error) {
 	// n = node , op = original parent , s = sibling
 	n := p.node
 	op := n.Parent
 	var s *Node[V]
+
+	if op == nil {
+		return nil, ErrMissingRequiredNode
+	}
 
 	// Find the previous sibling
 	for _, x := range op.Children {
@@ -209,6 +225,10 @@ func (p *Parser[V]) AdoptSibling() *Node[V] {
 			break
 		}
 		s = x
+	}
+
+	if s == nil {
+		return nil, ErrMissingRequiredNode
 	}
 
 	// Remove s from op's Children
@@ -226,5 +246,5 @@ func (p *Parser[V]) AdoptSibling() *Node[V] {
 	// Update s's Parent
 	s.Parent = n
 
-	return n
+	return n, nil
 }
