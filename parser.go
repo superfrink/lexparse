@@ -27,13 +27,13 @@ var ErrMissingRequiredNode = errors.New("missing required node")
 // TODO(#459): Implement parser
 
 // Tree is the parse tree data structure.
-type Tree[V any] struct {
+type Tree[V comparable] struct {
 	// Root points to the root Node in the parse tree.
 	Root *Node[V]
 }
 
 // Node is the structure for a single node in the parse tree.
-type Node[V any] struct {
+type Node[V comparable] struct {
 	Parent   *Node[V]
 	Children []*Node[V]
 	Value    V
@@ -41,10 +41,10 @@ type Node[V any] struct {
 }
 
 // FIXME: Remove channel.
-type ParseFn[V any] func(context.Context, *Parser[V]) (ParseFn[V], error)
+type ParseFn[V comparable] func(context.Context, *Parser[V]) (ParseFn[V], error)
 
 // NewParser creates a new Parser that reads from the lexemes channel.
-func NewParser[V any](lexemes <-chan *Lexeme) *Parser[V] {
+func NewParser[V comparable](lexemes <-chan *Lexeme) *Parser[V] {
 	root := &Node[V]{}
 	p := &Parser[V]{
 		lexemes: lexemes,
@@ -57,7 +57,7 @@ func NewParser[V any](lexemes <-chan *Lexeme) *Parser[V] {
 }
 
 // Parser reads the lexemes produced by a Lexer and builds a parse tree.
-type Parser[V any] struct {
+type Parser[V comparable] struct {
 	lexemes <-chan *Lexeme
 
 	tree *Tree[V]
