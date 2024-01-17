@@ -40,7 +40,14 @@ type Node[V comparable] struct {
 	// TODO: Position,Line,Column in original input.
 }
 
-// FIXME: Remove channel.
+// ParseFn is the signature for the parsing function used to build the
+// parse tree from lexemes.  The parsing function is passed to
+// Parse().
+// There may be more than one parsing function used by a parser.  The
+// top-level function is passed to Parse().  A parsing function hands
+// parsing off to another function by returning a pointer to the other
+// function.  Parse() will continue calling returned functions until
+// nil is returned.
 type ParseFn[V comparable] func(context.Context, *Parser[V]) (ParseFn[V], error)
 
 // NewParser creates a new Parser that reads from the lexemes channel.
