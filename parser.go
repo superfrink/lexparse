@@ -157,7 +157,8 @@ func (p *Parser[V]) Pop() *Node[V] {
 // position of its parent node.  The original parent node becomes a
 // child of the current node.  All other child nodes of the original
 // parent remain unchanged, except for the current node which becomes
-// the new parent.
+// the new parent. If RotateLeft is called on the root node then
+// ErrMissingRequiredNode is returned.
 func (p *Parser[V]) RotateLeft() (*Node[V], error) {
 	// n = node , op = original parent , gp = grand parent
 	n := p.node
@@ -208,7 +209,8 @@ func (p *Parser[V]) RotateLeft() (*Node[V], error) {
 	return n, nil
 }
 
-// AdoptSibling moves the current node's previous sibling into the node's child.
+// AdoptSibling moves the current node's previous sibling into the node's
+// child. If no previous sibling exists, ErrMissingRequiredNode is returned.
 func (p *Parser[V]) AdoptSibling() (*Node[V], error) {
 	// n = node , op = original parent , s = sibling
 	n := p.node
