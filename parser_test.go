@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -38,26 +37,30 @@ const (
 
 // compareTrees returns true if two trees are equivalent by comparing the
 // value of each node in both trees.
-func compareTrees[T any](tr1, tr2 *Tree[T]) (bool, error) {
-	ch1 := make(chan string)
-	ch2 := make(chan string)
+func compareTrees[T comparable](t1, t2 *Tree[T]) (bool, error) {
+	return doCompareTrees(t1.Root, t2.Root)
+}
 
-	go walkTree(tr1, ch1)
-	go walkTree(tr2, ch2)
+func doCompareTrees[T comparable](n1, n2 *Node[T]) (bool, error) {
+	if n1 == nil && n2 == nil {
+		return true, nil
+	}
 
-	for {
-		i1, more1 := <-ch1
-		i2, more2 := <-ch2
+	if (n1 == nil && n2 != nil) || (n1 != nil && n2 == nil) {
+		return false, errTreeMismatchSize
+	}
 
-		if more1 != more2 {
-			return false, errTreeMismatchSize
-		}
-		if !more1 {
-			break
-		}
+	if n1.Value != n2.Value {
+		return false, fmt.Errorf("node values: %+v, %+v, %w", n1, n2, errTreeMismatchValue)
+	}
 
-		if i1 != i2 {
-			return false, fmt.Errorf("node values: %q, %q, %w", i1, i2, errTreeMismatchValue)
+	if len(n1.Children) != len(n2.Children) {
+		return false, errTreeMismatchSize
+	}
+	for i := range n1.Children {
+		b, e := doCompareTrees(n1.Children[i], n2.Children[i])
+		if b != true || e != nil {
+			return b, e
 		}
 	}
 
@@ -66,7 +69,7 @@ func compareTrees[T any](tr1, tr2 *Tree[T]) (bool, error) {
 
 // debugPrintTreeNodes walks tree nodes and prints a visualization of the tree
 // when debugPrint is true.
-func debugPrintTreeNodes[T any](n int, node *Node[T]) {
+func debugPrintTreeNodes[T comparable](n int, node *Node[T]) {
 	if !debugPrint {
 		return
 	}
@@ -114,29 +117,6 @@ func testParse(t *testing.T, input string) (*Tree[string], error) {
 	ctx := context.Background()
 	tree, err := p.Parse(ctx, pFn)
 	return tree, err
-}
-
-// walkTree walks a parse tree and sends a string value of each node to the channel.
-func walkTree[T any](tr *Tree[T], ch chan<- string) {
-	defer close(ch)
-
-	doWalkTree(ch, "", tr.Root)
-}
-
-// doWalkTree is a recursive worker function used by walkTree.
-func doWalkTree[T any](ch chan<- string, depth string, node *Node[T]) {
-	if node == nil {
-		return
-	}
-
-	message := ""
-	message += fmt.Sprintf(depth+":Value: %v", node.Value)
-	ch <- message
-
-	for i, c := range node.Children {
-		newDepth := depth + strconv.Itoa(i)
-		doWalkTree(ch, newDepth, c)
-	}
 }
 
 func TestParser_new(t *testing.T) {

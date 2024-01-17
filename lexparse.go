@@ -19,7 +19,12 @@ package lexparse
 import "context"
 
 // LexParse runs the Lexer passing lexemes to the parser functions.
-func LexParse[V any](ctx context.Context, r BufferedRuneReader, initState State, initFn ParseFn[V]) (*Tree[V], error) {
+func LexParse[V comparable](
+	ctx context.Context,
+	r BufferedRuneReader,
+	initState State,
+	initFn ParseFn[V],
+) (*Tree[V], error) {
 	l := NewLexer(r, initState)
 	p := NewParser[V](l.Lex(ctx))
 	return p.Parse(ctx, initFn)
