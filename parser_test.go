@@ -58,9 +58,9 @@ func doCompareTrees[T comparable](n1, n2 *Node[T]) (bool, error) {
 		return false, errTreeMismatchSize
 	}
 	for i := range n1.Children {
-		b, e := doCompareTrees(n1.Children[i], n2.Children[i])
-		if b != true || e != nil {
-			return b, e
+		b, err := doCompareTrees(n1.Children[i], n2.Children[i])
+		if b != true || err != nil {
+			return b, err
 		}
 	}
 
